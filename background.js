@@ -200,6 +200,329 @@ class EmailNotesStorage {
       return null;
     }
   }
+
+  // Export all notes to a backup file
+  async exportNotes() {
+    try {
+      console.log('Background: Starting notes export');
+      
+      const allNotes = await this.getAllNotes();
+      const metadata = await this.getMetadata();
+      const timestamp = new Date().toISOString();
+      
+      const exportData = {
+        version: '1.1.0',
+        exportDate: timestamp,
+        exportType: 'email-thread-notes-backup',
+        metadata: metadata,
+        notes: allNotes,
+        totalNotes: Object.keys(allNotes).length
+      };
+      
+      const jsonString = JSON.stringify(exportData, null, 2);
+      
+      // Generate filename with timestamp
+      const dateStr = new Date().toISOString().split('T')[0];
+      const timeStr = new Date().toTimeString().split(' ')[0].replace(/:/g, '-');
+      const filename = `email-notes-backup-${dateStr}-${timeStr}.json`;
+      
+      // Convert to data URL for download (works in service workers)
+      const dataUrl = 'data:application/json;base64,' + btoa(unescape(encodeURIComponent(jsonString)));
+      
+      const downloadId = await chrome.downloads.download({
+        url: dataUrl,
+        filename: filename,
+        saveAs: true // Let user choose location
+      });
+      
+      console.log('Background: Export initiated with download ID:', downloadId);
+      
+      return { 
+        success: true, 
+        downloadId: downloadId, 
+        filename: filename,
+        notesCount: Object.keys(allNotes).length
+      };
+    } catch (error) {
+      console.error('Background: Error exporting notes:', error);
+      return { success: false, error: error.message };
+    }
+  }
+
+  // Import notes from a backup file
+  async importNotes(fileContent, options = {}) {
+    try {
+      console.log('Background: Starting notes import');
+      
+      let importData;
+      try {
+        importData = JSON.parse(fileContent);
+      } catch (parseError) {
+        throw new Error('Invalid backup file format - not valid JSON');
+      }
+      
+      // Validate backup file structure
+      if (!importData.exportType || importData.exportType !== 'email-thread-notes-backup') {
+        throw new Error('Invalid backup file - not an Email Thread Notes backup');
+      }
+      
+      if (!importData.notes || typeof importData.notes !== 'object') {
+        throw new Error('Invalid backup file - notes data missing or corrupted');
+      }
+      
+      const { merge = false, overwrite = false } = options;
+      let imported = 0;
+      let skipped = 0;
+      let errors = 0;
+      
+      // Import each note
+      for (const [threadId, noteData] of Object.entries(importData.notes)) {
+        try {
+          const storageKey = `${this.storagePrefix}${threadId}`;
+          
+          if (!merge) {
+            // Check if note already exists
+            const existing = await chrome.storage.local.get([storageKey]);
+            if (existing[storageKey] && !overwrite) {
+              skipped++;
+              continue;
+            }
+          }
+          
+          // Validate note data structure
+          if (!noteData.content || !noteData.threadId) {
+            console.warn('Skipping invalid note data for thread:', threadId);
+            errors++;
+            continue;
+          }
+          
+          // Restore the note with current timestamp for lastModified if importing
+          const restoreData = {
+            ...noteData,
+            importedAt: Date.now(),
+            originalExportDate: importData.exportDate
+          };
+          
+          await chrome.storage.local.set({ [storageKey]: restoreData });
+          imported++;
+          
+        } catch (noteError) {
+          console.error('Error importing individual note:', threadId, noteError);
+          errors++;
+        }
+      }
+      
+      // Update metadata
+      if (imported > 0) {
+        const currentMetadata = await this.getMetadata();
+        currentMetadata.totalNotes = Object.keys(await this.getAllNotes()).length;
+        currentMetadata.lastUpdated = Date.now();
+        currentMetadata.lastImport = {
+          date: Date.now(),
+          importedNotes: imported,
+          skippedNotes: skipped,
+          errors: errors,
+          sourceVersion: importData.version
+        };
+        
+        await chrome.storage.local.set({ [this.metadataKey]: currentMetadata });
+      }
+      
+      console.log(`Background: Import completed - ${imported} imported, ${skipped} skipped, ${errors} errors`);
+      
+      return {
+        success: true,
+        imported: imported,
+        skipped: skipped,
+        errors: errors,
+        totalInBackup: Object.keys(importData.notes).length
+      };
+      
+    } catch (error) {
+      console.error('Background: Error importing notes:', error);
+      return { success: false, error: error.message };
+    }
+  }
+
+  // Get backup settings
+  async getBackupSettings() {
+    try {
+      const result = await chrome.storage.local.get(['backupSettings']);
+      return result.backupSettings || {
+        autoBackupEnabled: false,
+        autoBackupFrequency: 'weekly', // daily, weekly, monthly
+        lastAutoBackup: null,
+        backupLocation: 'downloads', // downloads, gdrive, icloud
+        includeMetadata: true
+      };
+    } catch (error) {
+      console.error('Error getting backup settings:', error);
+      return null;
+    }
+  }
+
+  // Save backup settings
+  async saveBackupSettings(settings) {
+    try {
+      await chrome.storage.local.set({ backupSettings: settings });
+      return { success: true };
+    } catch (error) {
+      console.error('Error saving backup settings:', error);
+      return { success: false, error: error.message };
+    }
+  }
+
+  // Auto-sync functionality
+  async enableAutoSync(frequencyMinutes = 5) {
+    try {
+      console.log('Background: Enabling auto-sync with frequency:', frequencyMinutes, 'minutes');
+      
+      // Clear any existing sync timer
+      if (this.syncTimer) {
+        clearInterval(this.syncTimer);
+      }
+      
+      // Create sync file immediately
+      await this.createSyncFile();
+      
+      // Set up periodic sync
+      this.syncTimer = setInterval(async () => {
+        await this.performAutoSync();
+      }, frequencyMinutes * 60 * 1000);
+      
+      // Save sync settings
+      const syncSettings = {
+        enabled: true,
+        frequency: frequencyMinutes,
+        lastSync: Date.now(),
+        syncFileName: 'email-notes-sync.json'
+      };
+      
+      await chrome.storage.local.set({ syncSettings });
+      
+      return { success: true, message: 'Auto-sync enabled' };
+    } catch (error) {
+      console.error('Error enabling auto-sync:', error);
+      return { success: false, error: error.message };
+    }
+  }
+
+  async disableAutoSync() {
+    try {
+      console.log('Background: Disabling auto-sync');
+      
+      if (this.syncTimer) {
+        clearInterval(this.syncTimer);
+        this.syncTimer = null;
+      }
+      
+      const syncSettings = {
+        enabled: false,
+        frequency: 5,
+        lastSync: null,
+        syncFileName: 'email-notes-sync.json'
+      };
+      
+      await chrome.storage.local.set({ syncSettings });
+      
+      return { success: true, message: 'Auto-sync disabled' };
+    } catch (error) {
+      console.error('Error disabling auto-sync:', error);
+      return { success: false, error: error.message };
+    }
+  }
+
+  async createSyncFile() {
+    try {
+      const allNotes = await this.getAllNotes();
+      const metadata = await this.getMetadata();
+      const timestamp = new Date().toISOString();
+      
+      const syncData = {
+        version: '1.2.0',
+        syncDate: timestamp,
+        syncType: 'email-thread-notes-sync',
+        deviceId: await this.getDeviceId(),
+        metadata: metadata,
+        notes: allNotes,
+        totalNotes: Object.keys(allNotes).length
+      };
+      
+      const jsonString = JSON.stringify(syncData, null, 2);
+      
+      // Convert to data URL for download (works in service workers)
+      const dataUrl = 'data:application/json;base64,' + btoa(unescape(encodeURIComponent(jsonString)));
+      
+      // Create file in EmailNotes subfolder for better organization
+      const filename = 'EmailNotes/EmailNotes/email-notes-sync.json';
+      
+      // Download to user's configured subfolder in Downloads
+      const downloadId = await chrome.downloads.download({
+        url: dataUrl,
+        filename: filename,
+        conflictAction: 'overwrite', // Always overwrite the sync file
+        saveAs: false // Don't prompt user, use default Downloads location
+      });
+      
+      console.log('Background: Sync file created with download ID:', downloadId);
+      
+      // Update last sync time
+      syncSettings.lastSync = Date.now();
+      await chrome.storage.local.set({ syncSettings });
+      
+      return { success: true, downloadId };
+    } catch (error) {
+      console.error('Error creating sync file:', error);
+      return { success: false, error: error.message };
+    }
+  }
+
+  async performAutoSync() {
+    try {
+      console.log('Background: Performing auto-sync');
+      
+      // TODO: Check if sync file was modified externally and import changes
+      // For now, just export current state
+      await this.createSyncFile();
+      
+      return { success: true };
+    } catch (error) {
+      console.error('Error during auto-sync:', error);
+      return { success: false, error: error.message };
+    }
+  }
+
+  async getSyncSettings() {
+    try {
+      const result = await chrome.storage.local.get(['syncSettings']);
+      return result.syncSettings || {
+        enabled: false,
+        frequency: 5,
+        lastSync: null,
+        syncFileName: 'email-notes-sync.json',
+        syncFolder: 'EmailNotes'
+      };
+    } catch (error) {
+      console.error('Error getting sync settings:', error);
+      return { enabled: false, frequency: 5, lastSync: null, syncFileName: 'email-notes-sync.json', syncFolder: 'EmailNotes' };
+    }
+  }
+
+  async getDeviceId() {
+    try {
+      let result = await chrome.storage.local.get(['deviceId']);
+      if (!result.deviceId) {
+        // Generate a unique device ID
+        const deviceId = 'device_' + Math.random().toString(36).substr(2, 9) + '_' + Date.now();
+        await chrome.storage.local.set({ deviceId });
+        return deviceId;
+      }
+      return result.deviceId;
+    } catch (error) {
+      console.error('Error getting device ID:', error);
+      return 'unknown_device';
+    }
+  }
 }
 
 // Initialize storage manager
@@ -251,6 +574,49 @@ chrome.runtime.onMessage.addListener((request, _sender, sendResponse) => {
         case 'getMetadata':
           const metadata = await storageManager.getMetadata();
           sendResponse({ metadata });
+          break;
+
+        case 'exportNotes':
+          const exportResult = await storageManager.exportNotes();
+          sendResponse(exportResult);
+          break;
+
+        case 'importNotes':
+          const importResult = await storageManager.importNotes(
+            request.fileContent,
+            request.options || {}
+          );
+          sendResponse(importResult);
+          break;
+
+        case 'getBackupSettings':
+          const backupSettings = await storageManager.getBackupSettings();
+          sendResponse({ settings: backupSettings });
+          break;
+
+        case 'saveBackupSettings':
+          const saveSettingsResult = await storageManager.saveBackupSettings(request.settings);
+          sendResponse(saveSettingsResult);
+          break;
+
+        case 'enableAutoSync':
+          const enableSyncResult = await storageManager.enableAutoSync(request.frequency);
+          sendResponse(enableSyncResult);
+          break;
+
+        case 'disableAutoSync':
+          const disableSyncResult = await storageManager.disableAutoSync();
+          sendResponse(disableSyncResult);
+          break;
+
+        case 'getSyncSettings':
+          const syncSettings = await storageManager.getSyncSettings();
+          sendResponse({ settings: syncSettings });
+          break;
+
+        case 'createSyncFile':
+          const createSyncResult = await storageManager.createSyncFile();
+          sendResponse(createSyncResult);
           break;
 
         default:

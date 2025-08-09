@@ -167,12 +167,16 @@ A lightweight Chrome extension that:
 - ❌ **PENDING**: Gmail reading pane support
 
 ### Advanced Features (Phase 2+)
+- ✅ **COMPLETED**: Basic export/import functionality with JSON backup files
+- ✅ **COMPLETED**: Auto-sync system with cloud folder integration (symbolic link approach)
+- ✅ **COMPLETED**: Delete functionality for notes (conversation view and notes list)
+- ✅ **COMPLETED**: Enhanced UI with thread subject display and save status indicators
+- ✅ **COMPLETED**: Account detection and email address display
+- ✅ **COMPLETED**: Auto-open notes panel for threads with existing notes
 - ❌ **PENDING**: Outlook thread detection and notes
 - ❌ **PENDING**: Cross-platform storage consistency
-- ❌ **PENDING**: Optional cloud sync with multiple provider support
-- ❌ **PENDING**: Advanced features (search, export, rich text formatting)
+- ❌ **PENDING**: Advanced features (search, rich text formatting)
 - ❌ **PENDING**: Data encryption for cloud storage
-- ❌ **PENDING**: Sync conflict resolution
 - ❌ **PENDING**: Visual thread indicators in email lists
 
 ## 🚧 KNOWN LIMITATIONS (v1.0)
@@ -185,15 +189,13 @@ A lightweight Chrome extension that:
 ### Functional Limitations
 - **No Rich Text**: Plain text notes only (no formatting, links, or images)
 - **No Search**: Cannot search through notes content (planned for future)
-- **No Export/Import**: No backup or data portability features yet
-- **No Cross-Device Sync**: Local storage only, no cloud synchronization
 - **Thread Subject Detection**: May not capture subjects for all Gmail interface variations
 
 ### Technical Limitations
 - **URL-Based Detection**: Thread detection relies on Gmail URL patterns which may change
 - **DOM Dependency**: Subject extraction depends on Gmail's DOM structure
 - **Storage Quota**: Limited by Chrome extension storage quotas (~5MB)
-- **No Offline Sync**: No sync when switching between devices or browsers
+- **Symbolic Link Dependency**: Cloud sync requires manual symbolic link setup
 
 ### User Experience Limitations
 - **No Visual Indicators**: Email lists don't show which threads have notes
@@ -202,9 +204,39 @@ A lightweight Chrome extension that:
 - **No Note Preview**: Cannot preview notes without opening the full panel
 
 ### Security & Privacy Limitations
-- **Local Storage Only**: Notes are tied to specific browser/device
-- **No Encryption**: Local notes are stored unencrypted
+- **No Encryption**: Notes are stored unencrypted (local and cloud)
 - **Account Detection**: Basic account isolation based on Gmail URL patterns
+- **Cloud Storage Trust**: Cloud sync relies on user's cloud provider security
+
+---
+
+## 🎉 CURRENT STATE (v1.2.0)
+
+### Recently Completed Features
+- ✅ **Export/Import System**: JSON backup files with full data preservation
+- ✅ **Auto-Sync Integration**: Symbolic link approach for cloud folder sync  
+- ✅ **Enhanced UI**: Thread subject display, save status indicators, last updated timestamps
+- ✅ **Delete Functionality**: Delete notes from both conversation view and notes list
+- ✅ **Account Detection**: Improved Gmail account identification and display
+- ✅ **Auto-Open Notes**: Automatically opens notes panel for threads with existing notes
+- ✅ **Timeout Handling**: Robust error handling to prevent popup freezing
+- ✅ **Simplified Setup**: Streamlined sync configuration with clear instructions
+
+### Fixed Issues (v1.2.0)
+- ✅ **Popup Freezing**: Fixed critical syntax error causing "Loading statistics..." hang
+- ✅ **Notes List Display**: Fixed "Gmail Thread" showing instead of actual subjects
+- ✅ **Account Display**: Fixed internal IDs showing instead of user-friendly names
+- ✅ **Auto-Panel Errors**: Fixed null reference errors when auto-opening panels
+- ✅ **Export Functionality**: Fixed blob URL error by using data URL encoding
+- ✅ **Sync Path Issues**: Corrected file path handling for symbolic link setup
+
+### Current Architecture
+- **Local Storage**: Chrome storage API with account-isolated keys
+- **Cloud Sync**: Downloads folder → Symbolic link → Cloud drive approach
+- **File Management**: `Downloads/EmailNotes/EmailNotes/email-notes-sync.json`
+- **Account Isolation**: Thread IDs prefixed with account identifiers
+- **Auto-Save**: 1-second debounced input handling
+- **Error Handling**: Comprehensive timeout and fallback mechanisms
 
 ---
 

@@ -16,25 +16,46 @@ document.addEventListener('DOMContentLoaded', async () => {
     try {
       // Get active tab and check platform
       const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
-      await checkPlatformStatus(tab);
+      
+      // Add timeout to prevent hanging
+      await Promise.race([
+        checkPlatformStatus(tab),
+        new Promise((_, reject) => setTimeout(() => reject(new Error('Platform check timeout')), 3000))
+      ]).catch(error => {
+        console.warn('Platform check failed:', error);
+        // Continue with basic setup
+        statusElement.textContent = 'Platform detection failed';
+        statusElement.className = 'status inactive';
+      });
       
       // Load extension state
       await loadExtensionState();
       
       // Load statistics
-      await loadStatistics();
+      await Promise.race([
+        loadStatistics(),
+        new Promise((_, reject) => setTimeout(() => reject(new Error('Statistics timeout')), 2000))
+      ]).catch(error => {
+        console.warn('Statistics loading failed:', error);
+        statsElement.textContent = 'Stats unavailable';
+      });
       
       // Setup event listeners
-      setupEventListeners();
+      await setupEventListeners();
       
       // Load notes list if not on email platform
       if (!currentPlatform) {
-        await loadNotesList();
+        await Promise.race([
+          loadNotesList(),
+          new Promise((_, reject) => setTimeout(() => reject(new Error('Notes list timeout')), 2000))
+        ]).catch(error => {
+          console.warn('Notes list loading failed:', error);
+        });
       }
       
     } catch (error) {
       console.error('Error initializing popup:', error);
-      statusElement.textContent = 'Error loading extension';
+      statusElement.textContent = 'Extension loaded with errors';
       statusElement.className = 'status inactive';
     }
   }
@@ -69,73 +90,16 @@ document.addEventListener('DOMContentLoaded', async () => {
   }
   
   async function detectGmailAccount(url) {
-    // Extract Gmail account from URL and try to get email address
+    // Simplified Gmail account detection - just use URL for now
     try {
       const match = url.match(/mail\.google\.com\/mail\/u\/(\d+)/);
       const accountIndex = match ? match[1] : '0';
       
-      // Try to get the actual email address from the active tab
-      try {
-        const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
-        
-        // Try to execute script to get email address
-        const results = await chrome.scripting.executeScript({
-          target: { tabId: tab.id },
-          func: () => {
-            // Try to find Gmail user email in the page
-            const emailRegex = /\b[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}\b/g;
-            const selectors = ['[data-email]', '.gb_A', '.gb_C', '[aria-label*="@"]'];
-            
-            for (const selector of selectors) {
-              const elements = document.querySelectorAll(selector);
-              for (const element of elements) {
-                if (element.dataset && element.dataset.email) return element.dataset.email;
-                const ariaLabel = element.getAttribute('aria-label');
-                if (ariaLabel) {
-                  const match = ariaLabel.match(emailRegex);
-                  if (match && match[0].includes('gmail.com')) return match[0];
-                }
-                const title = element.title;
-                if (title) {
-                  const match = title.match(emailRegex);
-                  if (match && match[0].includes('gmail.com')) return match[0];
-                }
-                const text = element.textContent;
-                if (text) {
-                  const match = text.match(emailRegex);
-                  if (match && match[0].includes('gmail.com')) return match[0];
-                }
-              }
-            }
-            
-            // Fallback: look for any Gmail address in page content
-            const bodyText = document.body.textContent;
-            const matches = bodyText.match(emailRegex);
-            if (matches) {
-              const gmailMatch = matches.find(email => 
-                email.includes('gmail.com') && 
-                !email.includes('noreply') &&
-                !email.includes('no-reply')
-              );
-              if (gmailMatch) return gmailMatch;
-            }
-            
-            return null;
-          }
-        });
-        
-        if (results && results[0] && results[0].result) {
-          return results[0].result;
-        }
-      } catch (scriptError) {
-        console.log('Could not execute script to detect email:', scriptError);
-      }
-      
-      // Fallback to account index
+      // Return simple account name - don't try complex email detection that can hang
       return `Gmail Account ${parseInt(accountIndex) + 1}`;
     } catch (error) {
       console.error('Error detecting Gmail account:', error);
-      return null;
+      return 'Gmail Account';
     }
   }
   
@@ -248,7 +212,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     }
   }
   
-  function setupEventListeners() {
+  async function setupEventListeners() {
     toggleSwitch.addEventListener('click', async () => {
       const isCurrentlyEnabled = toggleSwitch.classList.contains('enabled');
       const newState = !isCurrentlyEnabled;
@@ -274,6 +238,149 @@ document.addEventListener('DOMContentLoaded', async () => {
       } catch (error) {
         console.error('Error toggling extension:', error);
       }
+    });
+    
+    // Setup backup functionality
+    setupBackupEventListeners();
+    
+    // Setup sync functionality
+    setupSyncEventListeners();
+    
+    // Load sync settings
+    await loadSyncSettings();
+  }
+  
+  function setupBackupEventListeners() {
+    const exportBtn = document.getElementById('exportBtn');
+    const importBtn = document.getElementById('importBtn');
+    const importFile = document.getElementById('importFile');
+    const backupStatus = document.getElementById('backupStatus');
+    
+    exportBtn.addEventListener('click', async () => {
+      try {
+        exportBtn.disabled = true;
+        exportBtn.textContent = 'Exporting...';
+        backupStatus.textContent = 'Preparing your notes for export...';
+        
+        const response = await chrome.runtime.sendMessage({ action: 'exportNotes' });
+        
+        if (response.success) {
+          backupStatus.textContent = `✓ Exported ${response.notesCount} notes to ${response.filename}`;
+          backupStatus.style.color = '#059669';
+        } else {
+          backupStatus.textContent = `✗ Export failed: ${response.error}`;
+          backupStatus.style.color = '#dc2626';
+        }
+        
+      } catch (error) {
+        console.error('Export error:', error);
+        backupStatus.textContent = '✗ Export failed - please try again';
+        backupStatus.style.color = '#dc2626';
+      } finally {
+        exportBtn.disabled = false;
+        exportBtn.textContent = 'Export Notes';
+        
+        // Reset status after a few seconds
+        setTimeout(() => {
+          backupStatus.textContent = 'Click Export to save your notes to a file';
+          backupStatus.style.color = '#6b7280';
+        }, 5000);
+      }
+    });
+    
+    importBtn.addEventListener('click', () => {
+      importFile.click();
+    });
+    
+    importFile.addEventListener('change', async (e) => {
+      const file = e.target.files[0];
+      if (!file) return;
+      
+      try {
+        importBtn.disabled = true;
+        importBtn.textContent = 'Importing...';
+        backupStatus.textContent = 'Reading and importing notes...';
+        
+        const fileContent = await readFileAsText(file);
+        
+        // Show import options dialog
+        const importOptions = await showImportOptionsDialog();
+        if (!importOptions) {
+          // User cancelled
+          return;
+        }
+        
+        const response = await chrome.runtime.sendMessage({
+          action: 'importNotes',
+          fileContent: fileContent,
+          options: importOptions
+        });
+        
+        if (response.success) {
+          const { imported, skipped, errors, totalInBackup } = response;
+          let message = `✓ Import completed: ${imported} imported`;
+          if (skipped > 0) message += `, ${skipped} skipped`;
+          if (errors > 0) message += `, ${errors} errors`;
+          
+          backupStatus.textContent = message;
+          backupStatus.style.color = '#059669';
+          
+          // Refresh statistics
+          await loadStatistics();
+        } else {
+          backupStatus.textContent = `✗ Import failed: ${response.error}`;
+          backupStatus.style.color = '#dc2626';
+        }
+        
+      } catch (error) {
+        console.error('Import error:', error);
+        backupStatus.textContent = '✗ Import failed - invalid backup file';
+        backupStatus.style.color = '#dc2626';
+      } finally {
+        importBtn.disabled = false;
+        importBtn.textContent = 'Import Notes';
+        importFile.value = ''; // Reset file input
+        
+        // Reset status after a few seconds
+        setTimeout(() => {
+          backupStatus.textContent = 'Click Export to save your notes to a file';
+          backupStatus.style.color = '#6b7280';
+        }, 5000);
+      }
+    });
+  }
+  
+  function readFileAsText(file) {
+    return new Promise((resolve, reject) => {
+      const reader = new FileReader();
+      reader.onload = (e) => resolve(e.target.result);
+      reader.onerror = (e) => reject(new Error('Failed to read file'));
+      reader.readAsText(file);
+    });
+  }
+  
+  function showImportOptionsDialog() {
+    return new Promise((resolve) => {
+      const options = {
+        merge: false,
+        overwrite: false
+      };
+      
+      // For now, use simple confirm dialogs
+      // TODO: Create a proper modal dialog
+      const merge = confirm('Import Mode:\n\nOK = Replace existing notes\nCancel = Merge with existing notes\n\n(Existing notes with same thread will be kept if you choose Cancel)');
+      
+      if (merge) {
+        // Replace mode
+        options.merge = false;
+        options.overwrite = true;
+      } else {
+        // Merge mode
+        options.merge = true;
+        options.overwrite = false;
+      }
+      
+      resolve(options);
     });
   }
   
@@ -306,5 +413,153 @@ document.addEventListener('DOMContentLoaded', async () => {
     if (diffDays < 7) return `${diffDays}d ago`;
     
     return date.toLocaleDateString();
+  }
+  
+  async function loadSyncSettings() {
+    try {
+      const response = await chrome.runtime.sendMessage({ action: 'getSyncSettings' });
+      if (response.settings) {
+        updateSyncUI(response.settings);
+      }
+    } catch (error) {
+      console.error('Error loading sync settings:', error);
+    }
+  }
+  
+  function updateSyncUI(settings) {
+    const autoSyncToggle = document.getElementById('autoSyncToggle');
+    const syncSettings = document.getElementById('syncSettings');
+    const syncFrequency = document.getElementById('syncFrequency');
+    const backupStatus = document.getElementById('backupStatus');
+    
+    if (!autoSyncToggle) return; // Elements might not be loaded yet
+    
+    // Update toggle state
+    autoSyncToggle.classList.toggle('enabled', settings.enabled);
+    
+    // Show/hide settings
+    if (syncSettings) syncSettings.style.display = settings.enabled ? 'block' : 'none';
+    
+    // Update frequency selection
+    if (syncFrequency) {
+      syncFrequency.value = settings.frequency.toString();
+    }
+    
+    // Update status message
+    if (settings.enabled && settings.lastSync && backupStatus) {
+      const lastSyncDate = new Date(settings.lastSync);
+      const timeAgo = formatTimestamp(lastSyncDate);
+      backupStatus.textContent = `✓ Auto-sync enabled - last sync ${timeAgo}`;
+      backupStatus.style.color = '#059669';
+    } else if (settings.enabled && backupStatus) {
+      backupStatus.textContent = '⚙️ Auto-sync enabled - setting up...';
+      backupStatus.style.color = '#3b82f6';
+    }
+  }
+  
+  function setupSyncEventListeners() {
+    const autoSyncToggle = document.getElementById('autoSyncToggle');
+    const syncHeader = document.querySelector('.sync-header');
+    const syncFrequency = document.getElementById('syncFrequency');
+    const setupSyncBtn = document.getElementById('setupSyncBtn');
+    const backupStatus = document.getElementById('backupStatus');
+    
+    if (!autoSyncToggle) return; // Elements not ready yet
+    
+    // Toggle sync on/off
+    const toggleSync = async () => {
+      const isEnabled = autoSyncToggle.classList.contains('enabled');
+      
+      try {
+        if (isEnabled) {
+          // Disable sync
+          const response = await chrome.runtime.sendMessage({ action: 'disableAutoSync' });
+          if (response.success) {
+            await loadSyncSettings();
+            if (backupStatus) {
+              backupStatus.textContent = 'Auto-sync disabled';
+              backupStatus.style.color = '#6b7280';
+            }
+          }
+        } else {
+          // Enable sync
+          const frequency = parseInt(syncFrequency?.value) || 5;
+          const response = await chrome.runtime.sendMessage({ 
+            action: 'enableAutoSync', 
+            frequency: frequency 
+          });
+          if (response.success) {
+            await loadSyncSettings();
+            showSyncInstructions();
+          } else {
+            alert('Failed to enable auto-sync: ' + response.error);
+          }
+        }
+      } catch (error) {
+        console.error('Error toggling sync:', error);
+        alert('Error configuring sync. Please try again.');
+      }
+    };
+    
+    autoSyncToggle.addEventListener('click', toggleSync);
+    if (syncHeader) syncHeader.addEventListener('click', toggleSync);
+    
+    // Update frequency
+    if (syncFrequency) {
+      syncFrequency.addEventListener('change', async () => {
+        const isEnabled = autoSyncToggle.classList.contains('enabled');
+        if (isEnabled) {
+          const frequency = parseInt(syncFrequency.value) || 5;
+          try {
+            await chrome.runtime.sendMessage({ 
+              action: 'enableAutoSync', 
+              frequency: frequency 
+            });
+            if (backupStatus) {
+              backupStatus.textContent = `⚙️ Sync frequency updated to ${frequency} minute${frequency !== 1 ? 's' : ''}`;
+              backupStatus.style.color = '#3b82f6';
+            }
+          } catch (error) {
+            console.error('Error updating sync frequency:', error);
+          }
+        }
+      });
+    }
+    
+    // Setup sync folder
+    if (setupSyncBtn) {
+      setupSyncBtn.addEventListener('click', () => {
+        showSyncInstructions();
+      });
+    }
+  }
+  
+  function showSyncInstructions() {
+    const frequency = document.getElementById('syncFrequency')?.value || '5';
+    const isEnabled = document.getElementById('autoSyncToggle')?.classList.contains('enabled');
+    
+    let fileStatus = isEnabled ? 
+      '✅ Extension creates: Downloads/EmailNotes/EmailNotes/email-notes-sync.json' :
+      '⚠️  Enable auto-sync first to create sync file';
+    
+    const instructions = `CLOUD SYNC SETUP:
+
+${fileStatus}
+
+📁 Create symbolic link to sync folder:
+
+iCloud Drive:
+ln -s ~/Library/Mobile\\ Documents/com~apple~CloudDocs/EmailNotes ~/Downloads/EmailNotes
+
+Google Drive:
+ln -s ~/Google\\ Drive/EmailNotes ~/Downloads/EmailNotes
+
+Dropbox:
+ln -s ~/Dropbox/EmailNotes ~/Downloads/EmailNotes
+
+🔄 Auto-syncs every ${frequency} minutes
+📱 Import sync file on other devices`;
+    
+    alert(instructions);
   }
 });

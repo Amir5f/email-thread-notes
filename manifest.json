@@ -1,13 +1,14 @@
 {
   "manifest_version": 3,
   "name": "Email Thread Notes",
-  "version": "1.0.0",
+  "version": "1.2.0",
   "description": "Add private, persistent notes to email threads in Gmail and Outlook",
   
   "permissions": [
     "storage",
     "activeTab",
-    "scripting"
+    "scripting",
+    "downloads"
   ],
   
   "host_permissions": [
