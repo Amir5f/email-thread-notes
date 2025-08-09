@@ -43,9 +43,16 @@ document.addEventListener('DOMContentLoaded', async () => {
     if (tab.url.includes('mail.google.com')) {
       currentPlatform = 'gmail';
       currentAccount = await detectGmailAccount(tab.url);
-      statusElement.textContent = `Active on Gmail${currentAccount ? ` (${currentAccount})` : ''}`;
+      
+      if (currentAccount && currentAccount.includes('@')) {
+        statusElement.textContent = 'Active on Gmail';
+        platformInfoElement.textContent = `Extension is active for: ${currentAccount}`;
+      } else {
+        statusElement.textContent = `Active on Gmail${currentAccount ? ` (${currentAccount})` : ''}`;
+        platformInfoElement.textContent = 'Extension is active on this Gmail account.';
+      }
       statusElement.className = 'status active';
-      platformInfoElement.textContent = 'Extension is active on this Gmail account.';
+      
     } else if (tab.url.includes('outlook.office365.com') || tab.url.includes('outlook.live.com')) {
       currentPlatform = 'outlook';
       currentAccount = await detectOutlookAccount(tab.url);
@@ -62,12 +69,72 @@ document.addEventListener('DOMContentLoaded', async () => {
   }
   
   async function detectGmailAccount(url) {
-    // Extract Gmail account from URL or other indicators
+    // Extract Gmail account from URL and try to get email address
     try {
-      // Gmail account detection logic - simplified for now
-      const match = url.match(/mail\.google\.com\/mail\/u\/(\d+)/);  
-      return match ? `Account ${parseInt(match[1]) + 1}` : null;
-    } catch {
+      const match = url.match(/mail\.google\.com\/mail\/u\/(\d+)/);
+      const accountIndex = match ? match[1] : '0';
+      
+      // Try to get the actual email address from the active tab
+      try {
+        const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
+        
+        // Try to execute script to get email address
+        const results = await chrome.scripting.executeScript({
+          target: { tabId: tab.id },
+          func: () => {
+            // Try to find Gmail user email in the page
+            const emailRegex = /\b[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}\b/g;
+            const selectors = ['[data-email]', '.gb_A', '.gb_C', '[aria-label*="@"]'];
+            
+            for (const selector of selectors) {
+              const elements = document.querySelectorAll(selector);
+              for (const element of elements) {
+                if (element.dataset && element.dataset.email) return element.dataset.email;
+                const ariaLabel = element.getAttribute('aria-label');
+                if (ariaLabel) {
+                  const match = ariaLabel.match(emailRegex);
+                  if (match && match[0].includes('gmail.com')) return match[0];
+                }
+                const title = element.title;
+                if (title) {
+                  const match = title.match(emailRegex);
+                  if (match && match[0].includes('gmail.com')) return match[0];
+                }
+                const text = element.textContent;
+                if (text) {
+                  const match = text.match(emailRegex);
+                  if (match && match[0].includes('gmail.com')) return match[0];
+                }
+              }
+            }
+            
+            // Fallback: look for any Gmail address in page content
+            const bodyText = document.body.textContent;
+            const matches = bodyText.match(emailRegex);
+            if (matches) {
+              const gmailMatch = matches.find(email => 
+                email.includes('gmail.com') && 
+                !email.includes('noreply') &&
+                !email.includes('no-reply')
+              );
+              if (gmailMatch) return gmailMatch;
+            }
+            
+            return null;
+          }
+        });
+        
+        if (results && results[0] && results[0].result) {
+          return results[0].result;
+        }
+      } catch (scriptError) {
+        console.log('Could not execute script to detect email:', scriptError);
+      }
+      
+      // Fallback to account index
+      return `Gmail Account ${parseInt(accountIndex) + 1}`;
+    } catch (error) {
+      console.error('Error detecting Gmail account:', error);
       return null;
     }
   }
@@ -101,10 +168,19 @@ document.addEventListener('DOMContentLoaded', async () => {
         const filteredNotes = filterNotesByAccount(allNotes);
         const noteCount = Object.keys(filteredNotes).length;
         
+        let accountDisplay = '';
+        if (currentAccount) {
+          if (currentAccount.includes('@')) {
+            accountDisplay = `<div>👤 ${currentAccount}</div>`;
+          } else {
+            accountDisplay = `<div>👤 Account: ${currentAccount}</div>`;
+          }
+        }
+        
         statsElement.innerHTML = `
           <div>📝 ${noteCount} notes saved</div>
           <div>🌐 Platform: ${currentPlatform || 'All'}</div>
-          ${currentAccount ? `<div>👤 Account: ${currentAccount}</div>` : ''}
+          ${accountDisplay}
         `;
       }
     } catch (error) {

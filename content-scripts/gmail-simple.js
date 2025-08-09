@@ -259,7 +259,10 @@ class GmailThreadDetector {
           <h3>📝 Notes</h3>
           <div class="thread-subject" title="Thread subject">Loading...</div>
         </div>
-        <button class="notes-close">×</button>
+        <div class="notes-header-actions">
+          <button class="notes-delete" title="Delete this note">🗑️</button>
+          <button class="notes-close">×</button>
+        </div>
       </div>
       <textarea class="notes-textarea" placeholder="Add your private notes..."></textarea>
       <div class="notes-footer">
@@ -320,7 +323,26 @@ class GmailThreadDetector {
       white-space: nowrap;
       overflow: hidden;
       text-overflow: ellipsis;
-      max-width: 220px;
+      max-width: 180px;
+    `;
+
+    const headerActions = this.notesPanel.querySelector('.notes-header-actions');
+    headerActions.style.cssText = `
+      display: flex;
+      align-items: center;
+      gap: 4px;
+    `;
+
+    const deleteBtn = this.notesPanel.querySelector('.notes-delete');
+    deleteBtn.style.cssText = `
+      background: none;
+      border: none;
+      font-size: 14px;
+      cursor: pointer;
+      color: #5f6368;
+      padding: 4px 6px;
+      border-radius: 4px;
+      transition: background-color 0.2s;
     `;
 
     const textarea = this.notesPanel.querySelector('.notes-textarea');
@@ -383,6 +405,23 @@ class GmailThreadDetector {
       this.hideNotesPanel();
     });
 
+    deleteBtn.addEventListener('click', async (e) => {
+      e.preventDefault();
+      e.stopPropagation();
+      console.log('Delete button clicked');
+      await this.deleteCurrentNote();
+    });
+
+    deleteBtn.addEventListener('mouseenter', () => {
+      deleteBtn.style.backgroundColor = '#fee2e2';
+      deleteBtn.style.color = '#dc2626';
+    });
+
+    deleteBtn.addEventListener('mouseleave', () => {
+      deleteBtn.style.backgroundColor = 'transparent';
+      deleteBtn.style.color = '#5f6368';
+    });
+
     // Click outside to close
     const handleClickOutside = (e) => {
       if (this.notesPanel && 
@@ -438,11 +477,100 @@ class GmailThreadDetector {
     try {
       // Detect Gmail account from URL
       const match = window.location.href.match(/mail\.google\.com\/mail\/u\/(\d+)/);
-      this.currentAccount = match ? `gmail_account_${match[1]}` : 'gmail_account_0';
-      console.log('Detected Gmail account:', this.currentAccount);
+      const accountIndex = match ? match[1] : '0';
+      
+      // Try to get the actual email address
+      const emailAddress = this.getGmailUserEmail();
+      
+      // Store both internal ID and email address
+      this.currentAccount = `gmail_account_${accountIndex}`;
+      this.currentAccountEmail = emailAddress;
+      this.currentAccountIndex = accountIndex;
+      
+      console.log('Detected Gmail account:', this.currentAccount, 'Email:', emailAddress);
     } catch (error) {
       console.error('Error detecting account:', error);
       this.currentAccount = 'gmail_account_0';
+      this.currentAccountEmail = null;
+      this.currentAccountIndex = '0';
+    }
+  }
+
+  getGmailUserEmail() {
+    try {
+      // Method 1: Try to find email in Gmail's profile area
+      const profileSelectors = [
+        '[data-email]', // Some Gmail elements have email in data attribute
+        '.gb_A', // Google account info area
+        '.gb_C', // Profile information
+        '[aria-label*="@"]', // Elements with email in aria-label
+      ];
+      
+      for (const selector of profileSelectors) {
+        const elements = document.querySelectorAll(selector);
+        for (const element of elements) {
+          const email = this.extractEmailFromElement(element);
+          if (email) return email;
+        }
+      }
+      
+      // Method 2: Try to get from page title or other sources
+      const titleMatch = document.title.match(/([a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,})/);
+      if (titleMatch) return titleMatch[1];
+      
+      // Method 3: Look for email in any text content (last resort)
+      const emailRegex = /\b[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}\b/g;
+      const bodyText = document.body.textContent;
+      const matches = bodyText.match(emailRegex);
+      
+      if (matches) {
+        // Filter out common non-user emails
+        const userEmail = matches.find(email => 
+          !email.includes('noreply') && 
+          !email.includes('support') && 
+          !email.includes('no-reply') &&
+          email.includes('gmail.com') // Prefer gmail addresses for gmail accounts
+        );
+        if (userEmail) return userEmail;
+        
+        // Fallback to first email found
+        return matches[0];
+      }
+      
+      return null;
+    } catch (error) {
+      console.error('Error extracting Gmail user email:', error);
+      return null;
+    }
+  }
+
+  extractEmailFromElement(element) {
+    try {
+      // Check data attributes
+      if (element.dataset.email) return element.dataset.email;
+      
+      // Check aria-label
+      if (element.getAttribute('aria-label')) {
+        const ariaLabel = element.getAttribute('aria-label');
+        const emailMatch = ariaLabel.match(/([a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,})/);
+        if (emailMatch) return emailMatch[1];
+      }
+      
+      // Check title attribute
+      if (element.title) {
+        const titleMatch = element.title.match(/([a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,})/);
+        if (titleMatch) return titleMatch[1];
+      }
+      
+      // Check text content
+      if (element.textContent) {
+        const textMatch = element.textContent.match(/([a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,})/);
+        if (textMatch) return textMatch[1];
+      }
+      
+      return null;
+    } catch (error) {
+      return null;
     }
   }
   
@@ -483,11 +611,13 @@ class GmailThreadDetector {
         content: content,
         platform: 'gmail',
         account: this.currentAccount,
+        accountEmail: this.currentAccountEmail,
+        accountIndex: this.currentAccountIndex,
         originalThreadId: threadId,
         subject: subject
       });
       
-      console.log('Note saved for thread:', threadId, 'account:', this.currentAccount, response.success ? '✓' : '✗');
+      console.log('Note saved for thread:', threadId, 'account:', this.currentAccountEmail || this.currentAccount, response.success ? '✓' : '✗');
       return response;
     } catch (error) {
       console.error('Error saving note:', error);
@@ -565,6 +695,75 @@ class GmailThreadDetector {
     return null;
   }
 
+  async deleteCurrentNote() {
+    if (!this.currentThreadId || !this.extensionEnabled) {
+      console.log('Cannot delete note: no thread or extension disabled');
+      return;
+    }
+
+    // Show confirmation dialog
+    const confirmed = confirm('Are you sure you want to delete this note? This action cannot be undone.');
+    if (!confirmed) {
+      return;
+    }
+
+    try {
+      // Show deleting status
+      const statusIndicator = this.notesPanel.querySelector('.status-indicator');
+      const statusText = this.notesPanel.querySelector('.status-text');
+      const textarea = this.notesPanel.querySelector('.notes-textarea');
+      const lastUpdated = this.notesPanel.querySelector('.last-updated');
+
+      if (statusIndicator) statusIndicator.style.color = '#f59e0b';
+      if (statusText) statusText.textContent = 'Deleting...';
+
+      // Create account-specific thread ID
+      const accountSpecificThreadId = `${this.currentAccount}_${this.currentThreadId}`;
+      
+      const response = await chrome.runtime.sendMessage({
+        action: 'deleteNote',
+        threadId: accountSpecificThreadId
+      });
+
+      if (response.success) {
+        console.log('Note deleted successfully for thread:', this.currentThreadId);
+        
+        // Clear the textarea and update status
+        if (textarea) textarea.value = '';
+        if (lastUpdated) lastUpdated.textContent = '';
+        if (statusIndicator) statusIndicator.style.color = '#10b981';
+        if (statusText) statusText.textContent = '✓ Note deleted';
+        
+        // Show success message briefly, then return to ready state
+        setTimeout(() => {
+          if (statusIndicator) statusIndicator.style.color = '#6b7280';
+          if (statusText) statusText.textContent = 'Ready';
+        }, 2000);
+      } else {
+        console.error('Failed to delete note:', response.error);
+        if (statusIndicator) statusIndicator.style.color = '#ef4444';
+        if (statusText) statusText.textContent = 'Delete failed';
+        
+        setTimeout(() => {
+          if (statusIndicator) statusIndicator.style.color = '#6b7280';
+          if (statusText) statusText.textContent = 'Ready';
+        }, 3000);
+      }
+    } catch (error) {
+      console.error('Error deleting note:', error);
+      const statusIndicator = this.notesPanel.querySelector('.status-indicator');
+      const statusText = this.notesPanel.querySelector('.status-text');
+      
+      if (statusIndicator) statusIndicator.style.color = '#ef4444';
+      if (statusText) statusText.textContent = 'Delete error';
+      
+      setTimeout(() => {
+        if (statusIndicator) statusIndicator.style.color = '#6b7280';
+        if (statusText) statusText.textContent = 'Ready';
+      }, 3000);
+    }
+  }
+
   formatTimestamp(date) {
     const now = new Date();
     const diffMs = now - date;
@@ -599,11 +798,16 @@ class GmailThreadDetector {
   createNotesListPanel() {
     this.notesPanel = document.createElement('div');
     this.notesPanel.className = 'notes-panel notes-list-panel';
+    
+    const accountDisplay = this.currentAccountEmail || 
+                          `Gmail Account ${parseInt(this.currentAccountIndex || '0') + 1}` ||
+                          'Default Account';
+    
     this.notesPanel.innerHTML = `
       <div class="notes-header">
         <div class="notes-title-section">
           <h3>📝 All Notes</h3>
-          <div class="account-info">Account: ${this.currentAccount || 'Default'}</div>
+          <div class="account-info">Account: ${accountDisplay}</div>
         </div>
         <button class="notes-close">×</button>
       </div>
@@ -814,6 +1018,7 @@ class GmailThreadDetector {
         border-bottom: 1px solid #f1f3f4;
         cursor: pointer;
         transition: background-color 0.2s;
+        position: relative;
       `;
       
       item.addEventListener('mouseenter', () => {
@@ -827,6 +1032,12 @@ class GmailThreadDetector {
       item.addEventListener('click', () => {
         const originalThreadId = item.getAttribute('data-thread-id');
         this.openGmailThread(originalThreadId);
+      });
+      
+      // Add right-click context menu
+      item.addEventListener('contextmenu', (e) => {
+        e.preventDefault();
+        this.showContextMenu(e, item);
       });
     });
 
@@ -987,6 +1198,135 @@ class GmailThreadDetector {
     const div = document.createElement('div');
     div.textContent = text;
     return div.innerHTML;
+  }
+
+  showContextMenu(event, noteItem) {
+    // Remove any existing context menu
+    const existingMenu = document.querySelector('.notes-context-menu');
+    if (existingMenu) {
+      existingMenu.remove();
+    }
+
+    // Create context menu
+    const contextMenu = document.createElement('div');
+    contextMenu.className = 'notes-context-menu';
+    contextMenu.innerHTML = `
+      <div class="context-menu-item delete-item">
+        <span class="menu-icon">🗑️</span>
+        <span class="menu-text">Delete Note</span>
+      </div>
+    `;
+    
+    contextMenu.style.cssText = `
+      position: fixed;
+      top: ${event.clientY}px;
+      left: ${event.clientX}px;
+      background: white;
+      border: 1px solid #dadce0;
+      border-radius: 6px;
+      box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+      z-index: 10002;
+      font-family: 'Google Sans', Roboto, Arial, sans-serif;
+      font-size: 13px;
+      min-width: 120px;
+    `;
+
+    const deleteItem = contextMenu.querySelector('.delete-item');
+    deleteItem.style.cssText = `
+      padding: 8px 12px;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      transition: background-color 0.2s;
+    `;
+
+    deleteItem.addEventListener('mouseenter', () => {
+      deleteItem.style.backgroundColor = '#fee2e2';
+      deleteItem.style.color = '#dc2626';
+    });
+
+    deleteItem.addEventListener('mouseleave', () => {
+      deleteItem.style.backgroundColor = 'white';
+      deleteItem.style.color = 'inherit';
+    });
+
+    deleteItem.addEventListener('click', async () => {
+      contextMenu.remove();
+      await this.deleteNoteFromList(noteItem);
+    });
+
+    // Add to page
+    document.body.appendChild(contextMenu);
+
+    // Close menu when clicking outside
+    const closeMenu = (e) => {
+      if (!contextMenu.contains(e.target)) {
+        contextMenu.remove();
+        document.removeEventListener('click', closeMenu);
+      }
+    };
+    
+    // Add listener on next tick to avoid immediate closure
+    setTimeout(() => {
+      document.addEventListener('click', closeMenu);
+    }, 0);
+  }
+
+  async deleteNoteFromList(noteItem) {
+    const fullThreadId = noteItem.getAttribute('data-full-thread-id');
+    const originalThreadId = noteItem.getAttribute('data-thread-id');
+    
+    if (!fullThreadId) {
+      console.error('No thread ID found for note item');
+      return;
+    }
+
+    // Show confirmation dialog
+    const confirmed = confirm(`Are you sure you want to delete this note? This action cannot be undone.`);
+    if (!confirmed) {
+      return;
+    }
+
+    try {
+      console.log('Deleting note with thread ID:', fullThreadId);
+      
+      const response = await chrome.runtime.sendMessage({
+        action: 'deleteNote',
+        threadId: fullThreadId
+      });
+
+      if (response.success) {
+        console.log('Note deleted successfully from list view');
+        
+        // Remove the item from the list with animation
+        noteItem.style.transition = 'all 0.3s ease';
+        noteItem.style.opacity = '0';
+        noteItem.style.transform = 'translateX(-20px)';
+        
+        setTimeout(() => {
+          noteItem.remove();
+          
+          // Update the notes count
+          const notesCount = this.notesPanel.querySelectorAll('.note-item').length;
+          const countElement = this.notesPanel.querySelector('.notes-count');
+          if (countElement) {
+            countElement.textContent = `${notesCount} saved note${notesCount === 1 ? '' : 's'}`;
+          }
+          
+          // Show "no notes" message if list is empty
+          if (notesCount === 0) {
+            this.displayNoNotes();
+          }
+        }, 300);
+      } else {
+        console.error('Failed to delete note:', response.error);
+        alert('Failed to delete note. Please try again.');
+      }
+    } catch (error) {
+      console.error('Error deleting note from list:', error);
+      alert('Error deleting note. Please try again.');
+    }
   }
 
   openGmailThread(threadId) {

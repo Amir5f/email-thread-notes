@@ -7,9 +7,9 @@ class EmailNotesStorage {
   }
 
   // Save a note for a specific thread
-  async saveNote(threadId, content, platform = 'gmail', account = null, originalThreadId = null, subject = null) {
+  async saveNote(threadId, content, platform = 'gmail', account = null, originalThreadId = null, subject = null, accountEmail = null, accountIndex = null) {
     try {
-      console.log('Background: Saving note for threadId:', threadId, 'platform:', platform, 'account:', account, 'content length:', content.length);
+      console.log('Background: Saving note for threadId:', threadId, 'platform:', platform, 'account:', accountEmail || account, 'content length:', content.length);
       
       const noteData = {
         content: content,
@@ -17,6 +17,8 @@ class EmailNotesStorage {
         platform: platform,
         threadId: threadId,
         account: account,
+        accountEmail: accountEmail,
+        accountIndex: accountIndex,
         originalThreadId: originalThreadId,
         subject: subject,
         lastModified: Date.now()
@@ -73,15 +75,28 @@ class EmailNotesStorage {
   // Delete a note
   async deleteNote(threadId) {
     try {
+      console.log('Background: Deleting note for threadId:', threadId);
+      
       const storageKey = `${this.storagePrefix}${threadId}`;
-      await chrome.storage.local.remove([storageKey]);
       
-      // Update metadata
-      await this.removeFromMetadata(threadId);
+      // Check if note exists before deleting
+      const result = await chrome.storage.local.get([storageKey]);
+      const noteExists = result[storageKey] !== undefined;
       
-      return { success: true };
+      if (noteExists) {
+        await chrome.storage.local.remove([storageKey]);
+        console.log('Background: Note deleted successfully for threadId:', threadId);
+        
+        // Update metadata
+        await this.removeFromMetadata(threadId);
+        
+        return { success: true, existed: true };
+      } else {
+        console.log('Background: Note not found for threadId:', threadId);
+        return { success: true, existed: false, message: 'Note not found' };
+      }
     } catch (error) {
-      console.error('Error deleting note:', error);
+      console.error('Background: Error deleting note for threadId:', threadId, error);
       return { success: false, error: error.message };
     }
   }
@@ -113,6 +128,8 @@ class EmailNotesStorage {
       metadata.notes[threadId] = {
         platform: noteData.platform,
         account: noteData.account,
+        accountEmail: noteData.accountEmail,
+        accountIndex: noteData.accountIndex,
         originalThreadId: noteData.originalThreadId,
         lastModified: noteData.lastModified,
         created: metadata.notes[threadId]?.created || noteData.timestamp
@@ -204,7 +221,9 @@ chrome.runtime.onMessage.addListener((request, _sender, sendResponse) => {
             request.platform || 'gmail',
             request.account,
             request.originalThreadId,
-            request.subject
+            request.subject,
+            request.accountEmail,
+            request.accountIndex
           );
           sendResponse(saveResult);
           break;

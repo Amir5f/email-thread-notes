@@ -155,20 +155,56 @@ A lightweight Chrome extension that:
 ## Success Criteria
 
 ### Minimum Viable Product (MVP)
-- ✅ Works on both Gmail and Outlook web
-- ✅ Can add, edit, and delete notes
-- ✅ Notes persist across browser sessions
-- ✅ Non-intrusive user interface
-- ✅ Local storage with privacy controls
-- ✅ Platform-specific storage preferences
+- ✅ **COMPLETED**: Gmail conversation mode thread detection and notes
+- ✅ **COMPLETED**: Can add, edit, and delete notes with auto-save
+- ✅ **COMPLETED**: Notes persist across browser sessions
+- ✅ **COMPLETED**: Non-intrusive user interface with floating button
+- ✅ **COMPLETED**: Local storage using Chrome storage API
+- ✅ **COMPLETED**: Account-specific note isolation (prevents cross-account access)
+- ✅ **COMPLETED**: Extension toggle on/off functionality
+- ✅ **COMPLETED**: Notes list view with real conversation subjects
+- ❌ **PENDING**: Outlook web support
+- ❌ **PENDING**: Gmail reading pane support
 
-### Full Success
-- ✅ Seamless user experience across platforms and storage modes
-- ✅ Optional cloud sync with multiple provider support
-- ✅ Advanced features (search, export, indicators, encryption)
-- ✅ Performance impact <100ms even with cloud sync
-- ✅ Robust conflict resolution and sync reliability
-- ✅ Positive user feedback and adoption
+### Advanced Features (Phase 2+)
+- ❌ **PENDING**: Outlook thread detection and notes
+- ❌ **PENDING**: Cross-platform storage consistency
+- ❌ **PENDING**: Optional cloud sync with multiple provider support
+- ❌ **PENDING**: Advanced features (search, export, rich text formatting)
+- ❌ **PENDING**: Data encryption for cloud storage
+- ❌ **PENDING**: Sync conflict resolution
+- ❌ **PENDING**: Visual thread indicators in email lists
+
+## 🚧 KNOWN LIMITATIONS (v1.0)
+
+### Platform Limitations
+- **Gmail Only**: Outlook support is planned but not yet implemented
+- **Conversation Mode Only**: Does not work in Gmail's reading pane view
+- **Chrome Only**: Firefox and other browsers not supported (Manifest V3 requirement)
+
+### Functional Limitations
+- **No Rich Text**: Plain text notes only (no formatting, links, or images)
+- **No Search**: Cannot search through notes content (planned for future)
+- **No Export/Import**: No backup or data portability features yet
+- **No Cross-Device Sync**: Local storage only, no cloud synchronization
+- **Thread Subject Detection**: May not capture subjects for all Gmail interface variations
+
+### Technical Limitations
+- **URL-Based Detection**: Thread detection relies on Gmail URL patterns which may change
+- **DOM Dependency**: Subject extraction depends on Gmail's DOM structure
+- **Storage Quota**: Limited by Chrome extension storage quotas (~5MB)
+- **No Offline Sync**: No sync when switching between devices or browsers
+
+### User Experience Limitations
+- **No Visual Indicators**: Email lists don't show which threads have notes
+- **Manual Navigation**: Must manually open threads to access notes
+- **No Keyboard Shortcuts**: All interactions require mouse clicks
+- **No Note Preview**: Cannot preview notes without opening the full panel
+
+### Security & Privacy Limitations
+- **Local Storage Only**: Notes are tied to specific browser/device
+- **No Encryption**: Local notes are stored unencrypted
+- **Account Detection**: Basic account isolation based on Gmail URL patterns
 
 ---
 
@@ -176,85 +212,92 @@ A lightweight Chrome extension that:
 
 ## Phase 1: Foundation & Gmail Integration
 
-### Action 1.1: Project Setup & Basic Structure
+### Action 1.1: Project Setup & Basic Structure ✅ **COMPLETED**
 **Duration**: 2 hours
 **Dependencies**: None
 
 **Deliverables**:
-- Create extension directory structure
-- Implement manifest.json with basic configuration
-- Set up development environment with hot reload
-- Create basic HTML/CSS for notes panel
+- ✅ Create extension directory structure
+- ✅ Implement manifest.json with Manifest V3 configuration
+- ✅ Set up development environment
+- ✅ Create HTML/CSS for notes panel and popup
 
 **Acceptance Criteria**:
-- Extension loads in Chrome developer mode
-- Manifest V3 structure is properly configured
-- Basic file structure is established
-- Can toggle extension on/off
+- ✅ Extension loads in Chrome developer mode
+- ✅ Manifest V3 structure is properly configured
+- ✅ Basic file structure is established
+- ✅ Can toggle extension on/off via popup interface
 
-### Action 1.2: Gmail Thread Detection System
+### Action 1.2: Gmail Thread Detection System ✅ **COMPLETED**
 **Duration**: 4 hours  
 **Dependencies**: Action 1.1
 
 **Deliverables**:
-- Content script that runs on Gmail pages
-- Thread ID extraction logic for Gmail conversations
-- URL-based and DOM-based thread identification
-- Thread change detection system
+- ✅ Content script that runs on Gmail pages
+- ✅ Thread ID extraction logic for Gmail conversations
+- ✅ URL-based thread identification via hash patterns
+- ✅ Thread change detection system
 
 **Acceptance Criteria**:
-- Accurately identifies unique Gmail conversation threads
-- Detects when user switches between conversations
-- Handles both conversation view and individual email view
-- Generates consistent thread IDs across page reloads
+- ✅ Accurately identifies unique Gmail conversation threads
+- ✅ Detects when user switches between conversations
+- ❌ **LIMITATION**: Only works in conversation view, not individual email view or reading pane
+- ✅ Generates consistent thread IDs across page reloads
 
-### Action 1.3: Basic Local Storage Implementation
+### Action 1.3: Basic Local Storage Implementation ✅ **COMPLETED**
 **Duration**: 3 hours
 **Dependencies**: Action 1.2
 
 **Deliverables**:
-- Chrome storage API integration
-- Data structure for storing thread-note associations
-- Basic CRUD operations (Create, Read, Update, Delete)
-- Error handling for storage operations
+- ✅ Chrome storage API integration via background service worker
+- ✅ Data structure for storing thread-note associations with account isolation
+- ✅ Basic CRUD operations (Create, Read, Update, Delete)
+- ✅ Error handling for storage operations
+- ✅ Metadata tracking for statistics and management
 
 **Acceptance Criteria**:
-- Can save notes associated with Gmail thread IDs
-- Notes persist across browser restarts
-- Handles storage errors gracefully
-- Data structure is efficient and extensible
+- ✅ Can save notes associated with Gmail thread IDs
+- ✅ Notes persist across browser restarts
+- ✅ Handles storage errors gracefully
+- ✅ Data structure is efficient and extensible
+- ✅ **BONUS**: Account-specific storage isolation implemented
 
-### Action 1.4: Basic Notes UI for Gmail
+### Action 1.4: Basic Notes UI for Gmail ✅ **COMPLETED**
 **Duration**: 4 hours
 **Dependencies**: Actions 1.2, 1.3
 
 **Deliverables**:
-- Notes panel injection into Gmail interface
-- Simple textarea for note input
-- Save/cancel buttons with basic interactions
-- CSS styling that matches Gmail's design language
+- ✅ Notes panel injection via floating button
+- ✅ Simple textarea for note input with auto-save
+- ✅ Save status indicators and visual feedback
+- ✅ CSS styling that matches Gmail's design language
+- ✅ **BONUS**: Extension toggle functionality via popup
+- ✅ **BONUS**: Notes list view for browsing all saved notes
 
 **Acceptance Criteria**:
-- Notes panel appears in appropriate location in Gmail
-- UI doesn't conflict with existing Gmail functionality
-- Notes are automatically saved on user input
-- Panel can be shown/hidden as needed
+- ✅ Notes panel appears as floating overlay
+- ✅ UI doesn't conflict with existing Gmail functionality
+- ✅ Notes are automatically saved on user input (1-second delay)
+- ✅ Panel can be shown/hidden as needed
+- ✅ **BONUS**: Click outside to close functionality
+- ✅ **BONUS**: Thread subject display in notes panel
 
-### Action 1.5: Gmail Integration Testing & Refinement
+### Action 1.5: Gmail Integration Testing & Refinement ✅ **COMPLETED**
 **Duration**: 2 hours
 **Dependencies**: Actions 1.1-1.4
 
 **Deliverables**:
-- Comprehensive testing across different Gmail views
-- Bug fixes for edge cases
-- Performance optimization for Gmail
-- Documentation of Gmail-specific implementation details
+- ✅ Testing across Gmail conversation views
+- ✅ Bug fixes for thread detection and panel management
+- ✅ Performance optimization for Gmail
+- ✅ Documentation of Gmail-specific implementation details
 
 **Acceptance Criteria**:
-- Works reliably in Gmail conversation view
-- Works in Gmail individual message view
-- No noticeable performance impact on Gmail loading
-- Handles Gmail interface updates gracefully
+- ✅ Works reliably in Gmail conversation view
+- ❌ **LIMITATION**: Does not work in Gmail reading pane or individual message view
+- ✅ No noticeable performance impact on Gmail loading
+- ✅ Handles Gmail interface updates with robust selectors
+- ✅ **BONUS**: Account detection and isolation implemented
 
 ## Phase 2: Outlook Integration
 
