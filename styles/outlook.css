@@ -1,0 +1,7 @@
+/* Outlook-specific styles for Email Thread Notes */
+/* This will be implemented in Phase 2 */
+
+.email-notes-panel.outlook {
+  /* Outlook-specific styling will go here */
+  font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+}
