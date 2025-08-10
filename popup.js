@@ -246,6 +246,9 @@ document.addEventListener('DOMContentLoaded', async () => {
     // Setup sync functionality
     setupSyncEventListeners();
     
+    // Setup notes list functionality
+    setupNotesListEventListeners();
+    
     // Load sync settings
     await loadSyncSettings();
   }
@@ -561,5 +564,54 @@ ln -s ~/Dropbox/EmailNotes ~/Downloads/EmailNotes
 📱 Import sync file on other devices`;
     
     alert(instructions);
+  }
+  
+  function setupNotesListEventListeners() {
+    const syncNowBtn = document.getElementById('syncNowBtn');
+    
+    if (!syncNowBtn) return; // Element not ready yet
+    
+    syncNowBtn.addEventListener('click', async () => {
+      try {
+        syncNowBtn.disabled = true;
+        syncNowBtn.textContent = '🔄 Syncing...';
+        
+        // Trigger immediate sync file creation
+        const response = await chrome.runtime.sendMessage({ action: 'createSyncFile' });
+        
+        if (response.success) {
+          syncNowBtn.textContent = '✓ Synced!';
+          syncNowBtn.style.backgroundColor = '#059669';
+          
+          // Reset button after 2 seconds
+          setTimeout(() => {
+            syncNowBtn.textContent = '🔄 Sync Now';
+            syncNowBtn.style.backgroundColor = '';
+            syncNowBtn.disabled = false;
+          }, 2000);
+        } else {
+          syncNowBtn.textContent = '✗ Sync Failed';
+          syncNowBtn.style.backgroundColor = '#dc2626';
+          
+          // Reset button after 3 seconds
+          setTimeout(() => {
+            syncNowBtn.textContent = '🔄 Sync Now';
+            syncNowBtn.style.backgroundColor = '';
+            syncNowBtn.disabled = false;
+          }, 3000);
+        }
+        
+      } catch (error) {
+        console.error('Sync Now error:', error);
+        syncNowBtn.textContent = '✗ Error';
+        syncNowBtn.style.backgroundColor = '#dc2626';
+        
+        setTimeout(() => {
+          syncNowBtn.textContent = '🔄 Sync Now';
+          syncNowBtn.style.backgroundColor = '';
+          syncNowBtn.disabled = false;
+        }, 3000);
+      }
+    });
   }
 });

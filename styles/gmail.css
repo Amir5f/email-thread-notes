@@ -1,5 +1,40 @@
 /* Gmail-specific styles for Email Thread Notes */
 
+/* Notes Panel Dragging and Resizing */
+.notes-header {
+  cursor: move;
+  user-select: none;
+}
+
+.notes-panel {
+  min-width: 280px;
+  min-height: 300px;
+  resize: both;
+  overflow: hidden;
+}
+
+.resize-handle {
+  position: absolute;
+  bottom: 0;
+  right: 0;
+  width: 16px;
+  height: 16px;
+  cursor: se-resize;
+  background: linear-gradient(-45deg, transparent 30%, #dadce0 30%, #dadce0 40%, transparent 40%, transparent 50%, #dadce0 50%, #dadce0 60%, transparent 60%);
+}
+
+.resize-handle:hover {
+  background: linear-gradient(-45deg, transparent 30%, #5f6368 30%, #5f6368 40%, transparent 40%, transparent 50%, #5f6368 50%, #5f6368 60%, transparent 60%);
+}
+
+.notes-panel.dragging {
+  opacity: 0.8;
+}
+
+.notes-panel.resizing {
+  user-select: none;
+}
+
 .email-notes-panel {
   position: fixed;
   top: 20px;

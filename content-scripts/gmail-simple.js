@@ -272,6 +272,7 @@ class GmailThreadDetector {
         </div>
         <div class="last-updated"></div>
       </div>
+      <div class="resize-handle" title="Drag to resize"></div>
     `;
     
     this.notesPanel.style.cssText = `
@@ -438,6 +439,12 @@ class GmailThreadDetector {
     this.notesPanel.addEventListener('click', (e) => {
       e.stopPropagation();
     });
+
+    // Add dragging functionality
+    this.setupPanelDragging();
+    
+    // Add resizing functionality
+    this.setupPanelResizing();
 
     let saveTimeout;
 
@@ -1361,6 +1368,99 @@ class GmailThreadDetector {
       console.error('Error loading note:', error);
       return null;
     }
+  }
+
+  setupPanelDragging() {
+    const header = this.notesPanel.querySelector('.notes-header');
+    if (!header) return;
+
+    let isDragging = false;
+    let dragOffset = { x: 0, y: 0 };
+
+    header.addEventListener('mousedown', (e) => {
+      // Don't drag if clicking on buttons
+      if (e.target.closest('button')) return;
+      
+      isDragging = true;
+      this.notesPanel.classList.add('dragging');
+      
+      const rect = this.notesPanel.getBoundingClientRect();
+      dragOffset.x = e.clientX - rect.left;
+      dragOffset.y = e.clientY - rect.top;
+      
+      e.preventDefault();
+    });
+
+    document.addEventListener('mousemove', (e) => {
+      if (!isDragging) return;
+      
+      const newX = e.clientX - dragOffset.x;
+      const newY = e.clientY - dragOffset.y;
+      
+      // Keep panel within viewport bounds
+      const maxX = window.innerWidth - this.notesPanel.offsetWidth;
+      const maxY = window.innerHeight - this.notesPanel.offsetHeight;
+      
+      const clampedX = Math.max(0, Math.min(newX, maxX));
+      const clampedY = Math.max(0, Math.min(newY, maxY));
+      
+      this.notesPanel.style.left = clampedX + 'px';
+      this.notesPanel.style.top = clampedY + 'px';
+      this.notesPanel.style.right = 'auto'; // Clear right positioning
+      
+      e.preventDefault();
+    });
+
+    document.addEventListener('mouseup', () => {
+      if (isDragging) {
+        isDragging = false;
+        this.notesPanel.classList.remove('dragging');
+      }
+    });
+  }
+
+  setupPanelResizing() {
+    const resizeHandle = this.notesPanel.querySelector('.resize-handle');
+    if (!resizeHandle) return;
+
+    let isResizing = false;
+    let startSize = { width: 0, height: 0 };
+    let startMouse = { x: 0, y: 0 };
+
+    resizeHandle.addEventListener('mousedown', (e) => {
+      isResizing = true;
+      this.notesPanel.classList.add('resizing');
+      
+      startSize.width = parseInt(getComputedStyle(this.notesPanel).width, 10);
+      startSize.height = parseInt(getComputedStyle(this.notesPanel).height, 10);
+      startMouse.x = e.clientX;
+      startMouse.y = e.clientY;
+      
+      e.preventDefault();
+      e.stopPropagation();
+    });
+
+    document.addEventListener('mousemove', (e) => {
+      if (!isResizing) return;
+      
+      const deltaX = e.clientX - startMouse.x;
+      const deltaY = e.clientY - startMouse.y;
+      
+      const newWidth = Math.max(280, startSize.width + deltaX);
+      const newHeight = Math.max(300, startSize.height + deltaY);
+      
+      this.notesPanel.style.width = newWidth + 'px';
+      this.notesPanel.style.height = newHeight + 'px';
+      
+      e.preventDefault();
+    });
+
+    document.addEventListener('mouseup', () => {
+      if (isResizing) {
+        isResizing = false;
+        this.notesPanel.classList.remove('resizing');
+      }
+    });
   }
 }
 

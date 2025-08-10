@@ -210,9 +210,15 @@ A lightweight Chrome extension that:
 
 ---
 
-## 🎉 CURRENT STATE (v1.2.0)
+## 🎉 CURRENT STATE (v1.2.1)
 
-### Recently Completed Features
+### Recently Completed Features (v1.2.1)
+- ✅ **Sync Now Button**: Manual sync trigger in All Notes screen for immediate backup
+- ✅ **Panel Dragging**: Click and drag notes panel header to reposition anywhere on screen
+- ✅ **Panel Resizing**: Drag resize handle to customize panel size with minimum constraints
+- ✅ **Enhanced UX**: Visual feedback during drag/resize operations with opacity and cursor changes
+
+### Previously Completed Features (v1.2.0)
 - ✅ **Export/Import System**: JSON backup files with full data preservation
 - ✅ **Auto-Sync Integration**: Symbolic link approach for cloud folder sync  
 - ✅ **Enhanced UI**: Thread subject display, save status indicators, last updated timestamps
@@ -237,6 +243,7 @@ A lightweight Chrome extension that:
 - **Account Isolation**: Thread IDs prefixed with account identifiers
 - **Auto-Save**: 1-second debounced input handling
 - **Error Handling**: Comprehensive timeout and fallback mechanisms
+- **Interactive UI**: Draggable and resizable notes panel with viewport constraints
 
 ---
 
