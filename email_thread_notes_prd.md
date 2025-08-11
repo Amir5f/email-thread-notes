@@ -162,8 +162,7 @@ A lightweight Chrome extension that:
 - ✅ **COMPLETED**: Local storage using Chrome storage API
 - ✅ **COMPLETED**: Account-specific note isolation (prevents cross-account access)
 - ✅ **COMPLETED**: Extension toggle on/off functionality
-- ✅ **COMPLETED**: Notes list view with real conversation subjects
-- ❌ **PENDING**: Outlook web support
+- ⚠️ **IMPLEMENTED BUT UNTESTED**: Outlook web support (needs testing)
 - ❌ **PENDING**: Gmail reading pane support
 
 ### Advanced Features (Phase 2+)
@@ -173,18 +172,20 @@ A lightweight Chrome extension that:
 - ✅ **COMPLETED**: Enhanced UI with thread subject display and save status indicators
 - ✅ **COMPLETED**: Account detection and email address display
 - ✅ **COMPLETED**: Auto-open notes panel for threads with existing notes
-- ❌ **PENDING**: Outlook thread detection and notes
-- ❌ **PENDING**: Cross-platform storage consistency
+- ⚠️ **IMPLEMENTED BUT UNTESTED**: Outlook thread detection and notes (needs testing)
+- ✅ **COMPLETED**: Cross-platform storage consistency
+- ✅ **COMPLETED**: Unified backup system with debounced disk writes
+- ✅ **COMPLETED**: Improved extension popup interface
 - ❌ **PENDING**: Advanced features (search, rich text formatting)
 - ❌ **PENDING**: Data encryption for cloud storage
 - ❌ **PENDING**: Visual thread indicators in email lists
 
-## 🚧 KNOWN LIMITATIONS (v1.0)
+## 🚧 KNOWN LIMITATIONS (v2.1.0)
 
 ### Platform Limitations
-- **Gmail Only**: Outlook support is planned but not yet implemented
 - **Conversation Mode Only**: Does not work in Gmail's reading pane view
 - **Chrome Only**: Firefox and other browsers not supported (Manifest V3 requirement)
+- **Download Notifications**: Chrome shows download notifications for automatic backups (unavoidable)
 
 ### Functional Limitations
 - **No Rich Text**: Plain text notes only (no formatting, links, or images)

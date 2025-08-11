@@ -459,6 +459,8 @@ class GmailThreadDetector {
       clearTimeout(saveTimeout);
       saveTimeout = setTimeout(async () => {
         await this.saveNoteWithStatus(this.currentThreadId, textarea.value);
+        // Trigger debounced backup to disk after saving
+        chrome.runtime.sendMessage({ action: 'triggerDebouncedBackup' });
       }, 1000);
     });
 
@@ -821,6 +823,7 @@ class GmailThreadDetector {
       <div class="notes-list-content">
         <div class="loading-message">Loading your notes...</div>
       </div>
+      <div class="resize-handle" title="Drag to resize"></div>
     `;
     
     this.notesPanel.style.cssText = `
@@ -912,6 +915,10 @@ class GmailThreadDetector {
     this.notesPanel.addEventListener('click', (e) => {
       e.stopPropagation();
     });
+
+    // Add dragging and resizing functionality
+    this.setupPanelDragging();
+    this.setupPanelResizing();
 
     document.body.appendChild(this.notesPanel);
   }

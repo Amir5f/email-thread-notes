@@ -43,15 +43,7 @@ document.addEventListener('DOMContentLoaded', async () => {
       // Setup event listeners
       await setupEventListeners();
       
-      // Load notes list only when on supported email platform
-      if (currentPlatform) {
-        await Promise.race([
-          loadNotesList(),
-          new Promise((_, reject) => setTimeout(() => reject(new Error('Notes list timeout')), 2000))
-        ]).catch(error => {
-          console.warn('Notes list loading failed:', error);
-        });
-      }
+      // Notes list removed from popup for cleaner interface
       
     } catch (error) {
       console.error('Error initializing popup:', error);
@@ -61,25 +53,42 @@ document.addEventListener('DOMContentLoaded', async () => {
   }
   
   async function checkPlatformStatus(tab) {
+    // Check if extension is enabled
+    const extensionState = await chrome.storage.local.get(['extensionEnabled']);
+    const isEnabled = extensionState.extensionEnabled !== false; // Default to enabled
+    
     if (tab.url.includes('mail.google.com')) {
       currentPlatform = 'gmail';
       currentAccount = await detectGmailAccount(tab.url);
       
-      if (currentAccount && currentAccount.includes('@')) {
-        statusElement.textContent = 'Active on Gmail';
-        platformInfoElement.textContent = `Extension is active for: ${currentAccount}`;
+      if (isEnabled) {
+        if (currentAccount && currentAccount.includes('@')) {
+          statusElement.textContent = 'Active on Gmail';
+          platformInfoElement.textContent = `Extension is active for: ${currentAccount}`;
+        } else {
+          statusElement.textContent = `Active on Gmail${currentAccount ? ` (${currentAccount})` : ''}`;
+          platformInfoElement.textContent = 'Extension is active on this Gmail account.';
+        }
+        statusElement.className = 'status active';
       } else {
-        statusElement.textContent = `Active on Gmail${currentAccount ? ` (${currentAccount})` : ''}`;
-        platformInfoElement.textContent = 'Extension is active on this Gmail account.';
+        statusElement.textContent = 'Disabled on Gmail';
+        statusElement.className = 'status inactive';
+        platformInfoElement.textContent = 'Extension is disabled. Enable it using the toggle above.';
       }
-      statusElement.className = 'status active';
       
     } else if (tab.url.includes('outlook.office365.com') || tab.url.includes('outlook.live.com')) {
       currentPlatform = 'outlook';
       currentAccount = await detectOutlookAccount(tab.url);
-      statusElement.textContent = `Active on Outlook${currentAccount ? ` (${currentAccount})` : ''}`;
-      statusElement.className = 'status active';
-      platformInfoElement.textContent = 'Extension is active on this Outlook account.';
+      
+      if (isEnabled) {
+        statusElement.textContent = `Active on Outlook${currentAccount ? ` (${currentAccount})` : ''}`;
+        statusElement.className = 'status active';
+        platformInfoElement.textContent = 'Extension is active on this Outlook account.';
+      } else {
+        statusElement.textContent = 'Disabled on Outlook';
+        statusElement.className = 'status inactive';
+        platformInfoElement.textContent = 'Extension is disabled. Enable it using the toggle above.';
+      }
     } else {
       currentPlatform = null;
       currentAccount = null;
@@ -90,16 +99,17 @@ document.addEventListener('DOMContentLoaded', async () => {
   }
   
   async function detectGmailAccount(url) {
-    // Simplified Gmail account detection - just use URL for now
+    // Gmail account detection from URL
     try {
       const match = url.match(/mail\.google\.com\/mail\/u\/(\d+)/);
       const accountIndex = match ? match[1] : '0';
       
-      // Return simple account name - don't try complex email detection that can hang
-      return `Gmail Account ${parseInt(accountIndex) + 1}`;
+      // Try to get actual email from active tab if possible
+      // For now, return account index with note to find actual email
+      return `gmail_account_${accountIndex}`;
     } catch (error) {
       console.error('Error detecting Gmail account:', error);
-      return 'Gmail Account';
+      return 'gmail_account_0';
     }
   }
   
@@ -140,18 +150,17 @@ document.addEventListener('DOMContentLoaded', async () => {
         // Filter notes by current account/platform if available
         const filteredNotes = filterNotesByAccount(allNotes);
         const noteCount = Object.keys(filteredNotes).length;
+        const totalNotes = Object.keys(allNotes).length;
         
+        // Account display removed - gmail_account_0 format isn't helpful to users
         let accountDisplay = '';
-        if (currentAccount) {
-          if (currentAccount.includes('@')) {
-            accountDisplay = `<div>👤 ${currentAccount}</div>`;
-          } else {
-            accountDisplay = `<div>👤 Account: ${currentAccount}</div>`;
-          }
+        if (currentAccount && currentAccount.includes('@')) {
+          // Only show if we have a real email address
+          accountDisplay = `<div>👤 ${currentAccount}</div>`;
         }
         
         statsElement.innerHTML = `
-          <div>📝 ${noteCount} notes saved</div>
+          <div>📝 ${noteCount} notes saved${totalNotes > noteCount ? ` (${totalNotes} total)` : ''}</div>
           <div>🌐 Platform: ${currentPlatform || 'All'}</div>
           ${accountDisplay}
         `;
@@ -183,50 +192,6 @@ document.addEventListener('DOMContentLoaded', async () => {
     return filtered;
   }
   
-  async function loadNotesList() {
-    try {
-      const response = await chrome.runtime.sendMessage({ action: 'getAllNotes' });
-      
-      if (response.notes) {
-        const filteredNotes = filterNotesByAccount(response.notes);
-        const noteEntries = Object.entries(filteredNotes);
-        
-        if (noteEntries.length === 0) {
-          notesListElement.style.display = 'none';
-          return;
-        }
-        
-        // Sort by last modified
-        noteEntries.sort((a, b) => (b[1].lastModified || 0) - (a[1].lastModified || 0));
-        
-        notesListElement.innerHTML = noteEntries.map(([threadId, noteData]) => {
-          const preview = noteData.content.substring(0, 60) + (noteData.content.length > 60 ? '...' : '');
-          const timestamp = formatTimestamp(new Date(noteData.lastModified || noteData.timestamp));
-          
-          return `
-            <div class="note-item" data-thread-id="${threadId}" data-platform="${noteData.platform}">
-              <div class="note-subject">📧 ${noteData.platform.toUpperCase()} Thread</div>
-              <div class="note-preview">${preview}</div>
-              <div class="note-timestamp">${timestamp}</div>
-            </div>
-          `;
-        }).join('');
-        
-        notesListElement.style.display = 'block';
-        
-        // Add click handlers for note items
-        notesListElement.querySelectorAll('.note-item').forEach(item => {
-          item.addEventListener('click', () => {
-            const threadId = item.getAttribute('data-thread-id');
-            const platform = item.getAttribute('data-platform');
-            openThreadWithNotes(threadId, platform);
-          });
-        });
-      }
-    } catch (error) {
-      console.error('Error loading notes list:', error);
-    }
-  }
   
   async function setupEventListeners() {
     toggleSwitch.addEventListener('click', async () => {
@@ -239,6 +204,12 @@ document.addEventListener('DOMContentLoaded', async () => {
         
         // Update UI
         toggleSwitch.classList.toggle('enabled', newState);
+        
+        // Refresh platform status to show disabled state
+        const [currentTab] = await chrome.tabs.query({ active: true, currentWindow: true });
+        if (currentTab) {
+          await checkPlatformStatus(currentTab);
+        }
         
         // Notify content scripts of the change
         const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
@@ -267,43 +238,11 @@ document.addEventListener('DOMContentLoaded', async () => {
   }
   
   function setupBackupEventListeners() {
-    const exportBtn = document.getElementById('exportBtn');
     const importBtn = document.getElementById('importBtn');
     const syncNowBtn = document.getElementById('syncNowBtn');
     const importFile = document.getElementById('importFile');
     const backupStatus = document.getElementById('backupStatus');
     
-    exportBtn.addEventListener('click', async () => {
-      try {
-        exportBtn.disabled = true;
-        exportBtn.textContent = 'Exporting...';
-        backupStatus.textContent = 'Preparing your notes for export...';
-        
-        const response = await chrome.runtime.sendMessage({ action: 'exportNotes' });
-        
-        if (response.success) {
-          backupStatus.textContent = `✓ Exported ${response.notesCount} notes to ${response.filename}`;
-          backupStatus.style.color = '#059669';
-        } else {
-          backupStatus.textContent = `✗ Export failed: ${response.error}`;
-          backupStatus.style.color = '#dc2626';
-        }
-        
-      } catch (error) {
-        console.error('Export error:', error);
-        backupStatus.textContent = '✗ Export failed - please try again';
-        backupStatus.style.color = '#dc2626';
-      } finally {
-        exportBtn.disabled = false;
-        exportBtn.textContent = 'Export Notes';
-        
-        // Reset status after a few seconds
-        setTimeout(() => {
-          backupStatus.textContent = 'Click Export to save your notes to a file';
-          backupStatus.style.color = '#6b7280';
-        }, 5000);
-      }
-    });
     
     importBtn.addEventListener('click', () => {
       importFile.click();
@@ -360,7 +299,7 @@ document.addEventListener('DOMContentLoaded', async () => {
         
         // Reset status after a few seconds
         setTimeout(() => {
-          backupStatus.textContent = 'Click Export to save your notes to a file';
+          backupStatus.textContent = 'Click Sync Now to save your notes to disk';
           backupStatus.style.color = '#6b7280';
         }, 5000);
       }
@@ -419,7 +358,7 @@ document.addEventListener('DOMContentLoaded', async () => {
         
         // Reset backup status after a few seconds
         setTimeout(() => {
-          backupStatus.textContent = 'Click Export to save your notes to a file';
+          backupStatus.textContent = 'Click Sync Now to save your notes to disk';
           backupStatus.style.color = '#6b7280';
         }, 5000);
       });

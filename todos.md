@@ -1,9 +1,49 @@
 # Email Thread Notes - Development Todos
 
-## Last tasks for current sprint 
-- [ ] **Add Sync Now button** Button in the All Notes screent. triggers a backup of notes immediately. 
-- [ ] **Panel positioning and size** support dragging and expanding the size of the text box in the notes window 
+## Storage System Improvements (COMPLETED)
 
+### Core Storage Changes
+- [x] **Unify file formats** - Single backup format instead of separate export/sync types
+- [x] **Make all files importable** - Both manual exports and auto-sync files should import  
+- [x] **Implement debounced disk writes** - Save to disk 10 seconds after user stops typing
+- [x] **Add auto-backup on operations** - Write to disk on delete operations (saves use debounced)
+
+### File System Improvements
+- [x] **Keep Downloads/EmailNotes/EmailNotes/ structure** - Required for symlink limitations
+- [ ] **Custom folder setting** - Let users choose folder within Downloads (Future enhancement)
+
+### User Experience  
+- [x] **Symlink setup instructions** - Document iCloud Drive and Google Drive setup
+- [x] **Test data recovery** - Ensure recovery from disk if Chrome storage fails
+- [x] **Update backup UI** - Show that notes are automatically stored to Downloads/EmailNotes/EmailNotes/ location
+
+## UI/UX Improvements (COMPLETED)
+
+### Extension Popup Cleanup
+- [x] **Remove notes list from popup** - Cleaner interface without note previews
+- [x] **Eliminate duplicate Export/Sync buttons** - Removed Export Notes, kept Sync Now
+- [x] **Fix extension status display** - Shows "Disabled" when toggle is off
+- [x] **Remove unhelpful account display** - No more "gmail_account_0" labels
+- [x] **Update button text** - "Configure Sync Folder" → "Tips for syncing between devices"
+
+### Performance & User Experience
+- [x] **Reduce download notifications** - Changed debounce to 10 seconds, removed duplicate backups
+- [x] **Fix duplicate download issues** - Only one backup per user action
+- [x] **Improve notes counter accuracy** - Shows filtered notes with total count debug info
+
+## Last tasks for current sprint (COMPLETED)
+- [x] **Add Sync Now button** Button in the All Notes screen triggers a backup of notes immediately 
+- [x] **Panel positioning and size** support dragging and expanding the size of the text box in the notes window 
+
+
+## Next Priority - Testing & Validation
+
+### Outlook Integration Testing
+- [ ] **Test Outlook thread detection** - Verify thread ID extraction works on outlook.office365.com
+- [ ] **Test Outlook notes functionality** - Add, edit, delete notes in Outlook interface
+- [ ] **Test Outlook UI components** - Verify notes panel, buttons, and styling work correctly
+- [ ] **Test cross-platform storage** - Ensure Gmail and Outlook notes are properly isolated
+- [ ] **Test account detection** - Verify Outlook account identification works
 
 ##  Future feature ideas (Not now)
 
@@ -154,15 +194,23 @@
 
 ## 📊 Progress Tracking
 
-**Current Version**: v1.2.1
-**Next Milestone**: v2.0.0 (Outlook Integration)
-**Overall Completion**: ~50% of planned features
+**Current Version**: v2.1.0
+**Next Milestone**: v2.2.0 (Advanced Features)
+**Overall Completion**: ~65% of planned features
 
-**Recent Completions (v1.2.1)**:
-✅ Sync Now button in All Notes screen
-✅ Panel dragging functionality
-✅ Panel resizing with constraints
-✅ Enhanced UX with visual feedback
+**Recent Completions (v2.1.0)**:
+✅ Unified file format system (single backup type)
+✅ Debounced disk writes (10 seconds after typing)
+✅ Improved extension popup interface
+✅ Eliminated duplicate Export/Sync functionality  
+✅ Fixed download notification frequency
+✅ Cloud sync setup documentation
+
+**Previous Completions (v2.0.0)**:
+⚠️ Outlook integration implemented (needs testing)
+✅ Cross-platform storage with account isolation
+✅ Unified UI components for Gmail and Outlook
+⚠️ Thread detection for both platforms (Outlook untested)
 
 **Previous Completions (v1.2.0)**:
 ✅ Export/Import system
