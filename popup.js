@@ -43,8 +43,8 @@ document.addEventListener('DOMContentLoaded', async () => {
       // Setup event listeners
       await setupEventListeners();
       
-      // Load notes list if not on email platform
-      if (!currentPlatform) {
+      // Load notes list only when on supported email platform
+      if (currentPlatform) {
         await Promise.race([
           loadNotesList(),
           new Promise((_, reject) => setTimeout(() => reject(new Error('Notes list timeout')), 2000))
@@ -104,8 +104,17 @@ document.addEventListener('DOMContentLoaded', async () => {
   }
   
   async function detectOutlookAccount(url) {
-    // Outlook account detection - simplified for now
-    return null; // TODO: Implement Outlook account detection
+    // Try to detect Outlook account from URL
+    try {
+      const match = url.match(/outlook\.office365\.com\/mail\/([^\/]+)/);
+      const accountId = match ? match[1] : 'default';
+      
+      // Return simple account identifier for now
+      return `Outlook Account (${accountId})`;
+    } catch (error) {
+      console.error('Error detecting Outlook account:', error);
+      return 'Outlook Account';
+    }
   }
   
   async function loadExtensionState() {
@@ -155,13 +164,20 @@ document.addEventListener('DOMContentLoaded', async () => {
   
   function filterNotesByAccount(notes) {
     // If we're on a specific platform/account, filter notes accordingly
-    if (!currentPlatform) return notes;
+    if (!currentPlatform || !currentAccount) return notes;
     
     const filtered = {};
     for (const [threadId, noteData] of Object.entries(notes)) {
+      // Filter by platform first
       if (noteData.platform === currentPlatform) {
-        // TODO: Add account-level filtering when implemented
-        filtered[threadId] = noteData;
+        // Then filter by account - check if the threadId starts with current account
+        if (threadId.startsWith(`${currentAccount}_`)) {
+          filtered[threadId] = noteData;
+        }
+        // Also check if the noteData has account info that matches
+        else if (noteData.account === currentAccount || noteData.accountEmail === currentAccount) {
+          filtered[threadId] = noteData;
+        }
       }
     }
     return filtered;
@@ -246,9 +262,6 @@ document.addEventListener('DOMContentLoaded', async () => {
     // Setup sync functionality
     setupSyncEventListeners();
     
-    // Setup notes list functionality
-    setupNotesListEventListeners();
-    
     // Load sync settings
     await loadSyncSettings();
   }
@@ -256,6 +269,7 @@ document.addEventListener('DOMContentLoaded', async () => {
   function setupBackupEventListeners() {
     const exportBtn = document.getElementById('exportBtn');
     const importBtn = document.getElementById('importBtn');
+    const syncNowBtn = document.getElementById('syncNowBtn');
     const importFile = document.getElementById('importFile');
     const backupStatus = document.getElementById('backupStatus');
     
@@ -351,6 +365,65 @@ document.addEventListener('DOMContentLoaded', async () => {
         }, 5000);
       }
     });
+
+    // Sync Now button event listener
+    if (syncNowBtn) {
+      syncNowBtn.addEventListener('click', async () => {
+        try {
+          syncNowBtn.disabled = true;
+          syncNowBtn.textContent = '🔄 Syncing...';
+          backupStatus.textContent = 'Triggering immediate sync...';
+          
+          // Trigger immediate auto-sync
+          const response = await chrome.runtime.sendMessage({ action: 'triggerImmediateSync' });
+          
+          if (response.success) {
+            syncNowBtn.textContent = '✓ Synced!';
+            syncNowBtn.style.backgroundColor = '#059669';
+            backupStatus.textContent = response.message || '✓ Sync completed successfully';
+            backupStatus.style.color = '#059669';
+            
+            // Reset button after 2 seconds
+            setTimeout(() => {
+              syncNowBtn.textContent = '🔄 Sync Now';
+              syncNowBtn.style.backgroundColor = '';
+              syncNowBtn.disabled = false;
+            }, 2000);
+          } else {
+            syncNowBtn.textContent = '✗ Failed';
+            syncNowBtn.style.backgroundColor = '#dc2626';
+            backupStatus.textContent = response.error || '✗ Sync failed - please try again';
+            backupStatus.style.color = '#dc2626';
+            
+            // Reset button after 3 seconds
+            setTimeout(() => {
+              syncNowBtn.textContent = '🔄 Sync Now';
+              syncNowBtn.style.backgroundColor = '';
+              syncNowBtn.disabled = false;
+            }, 3000);
+          }
+          
+        } catch (error) {
+          console.error('Sync Now error:', error);
+          syncNowBtn.textContent = '✗ Error';
+          syncNowBtn.style.backgroundColor = '#dc2626';
+          backupStatus.textContent = '✗ Sync failed - please try again';
+          backupStatus.style.color = '#dc2626';
+          
+          setTimeout(() => {
+            syncNowBtn.textContent = '🔄 Sync Now';
+            syncNowBtn.style.backgroundColor = '';
+            syncNowBtn.disabled = false;
+          }, 3000);
+        }
+        
+        // Reset backup status after a few seconds
+        setTimeout(() => {
+          backupStatus.textContent = 'Click Export to save your notes to a file';
+          backupStatus.style.color = '#6b7280';
+        }, 5000);
+      });
+    }
   }
   
   function readFileAsText(file) {
@@ -566,52 +639,4 @@ ln -s ~/Dropbox/EmailNotes ~/Downloads/EmailNotes
     alert(instructions);
   }
   
-  function setupNotesListEventListeners() {
-    const syncNowBtn = document.getElementById('syncNowBtn');
-    
-    if (!syncNowBtn) return; // Element not ready yet
-    
-    syncNowBtn.addEventListener('click', async () => {
-      try {
-        syncNowBtn.disabled = true;
-        syncNowBtn.textContent = '🔄 Syncing...';
-        
-        // Trigger immediate sync file creation
-        const response = await chrome.runtime.sendMessage({ action: 'createSyncFile' });
-        
-        if (response.success) {
-          syncNowBtn.textContent = '✓ Synced!';
-          syncNowBtn.style.backgroundColor = '#059669';
-          
-          // Reset button after 2 seconds
-          setTimeout(() => {
-            syncNowBtn.textContent = '🔄 Sync Now';
-            syncNowBtn.style.backgroundColor = '';
-            syncNowBtn.disabled = false;
-          }, 2000);
-        } else {
-          syncNowBtn.textContent = '✗ Sync Failed';
-          syncNowBtn.style.backgroundColor = '#dc2626';
-          
-          // Reset button after 3 seconds
-          setTimeout(() => {
-            syncNowBtn.textContent = '🔄 Sync Now';
-            syncNowBtn.style.backgroundColor = '';
-            syncNowBtn.disabled = false;
-          }, 3000);
-        }
-        
-      } catch (error) {
-        console.error('Sync Now error:', error);
-        syncNowBtn.textContent = '✗ Error';
-        syncNowBtn.style.backgroundColor = '#dc2626';
-        
-        setTimeout(() => {
-          syncNowBtn.textContent = '🔄 Sync Now';
-          syncNowBtn.style.backgroundColor = '';
-          syncNowBtn.disabled = false;
-        }, 3000);
-      }
-    });
-  }
 });

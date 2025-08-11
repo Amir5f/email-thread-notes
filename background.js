@@ -467,8 +467,9 @@ class EmailNotesStorage {
       console.log('Background: Sync file created with download ID:', downloadId);
       
       // Update last sync time
-      syncSettings.lastSync = Date.now();
-      await chrome.storage.local.set({ syncSettings });
+      const currentSyncSettings = await this.getSyncSettings();
+      currentSyncSettings.lastSync = Date.now();
+      await chrome.storage.local.set({ syncSettings: currentSyncSettings });
       
       return { success: true, downloadId };
     } catch (error) {
@@ -617,6 +618,15 @@ chrome.runtime.onMessage.addListener((request, _sender, sendResponse) => {
         case 'createSyncFile':
           const createSyncResult = await storageManager.createSyncFile();
           sendResponse(createSyncResult);
+          break;
+
+        case 'triggerImmediateSync':
+          const immediateSyncResult = await storageManager.performAutoSync();
+          if (immediateSyncResult.success) {
+            sendResponse({ success: true, message: 'Sync completed successfully' });
+          } else {
+            sendResponse({ success: false, error: immediateSyncResult.error || 'Sync failed' });
+          }
           break;
 
         default:
