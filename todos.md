@@ -39,11 +39,11 @@
 ## Next Priority - Testing & Validation
 
 ### Outlook Integration Testing
-- [ ] **Test Outlook thread detection** - Verify thread ID extraction works on outlook.office365.com
-- [ ] **Test Outlook notes functionality** - Add, edit, delete notes in Outlook interface
+- [ ] **Test Outlook thread detection** - Verify thread ID extraction works on outlook.office365.com and outlook.office.com
+- [ ] **Test Outlook notes functionality** - Add, edit, delete notes in Outlook interface  
 - [ ] **Test Outlook UI components** - Verify notes panel, buttons, and styling work correctly
 - [ ] **Test cross-platform storage** - Ensure Gmail and Outlook notes are properly isolated
-- [ ] **Test account detection** - Verify Outlook account identification works
+- [ ] **Test account detection** - Verify Outlook account identification works for both domains
 
 ##  Future feature ideas (Not now)
 
@@ -69,10 +69,10 @@
 
 ## 🚀 Next sprint Features 
 
-### Outlook Integration (v2.0)
-- [ ] **Outlook thread detection** for outlook.office365.com (and later outlook.live.com)
-- [ ] **Outlook-specific UI adaptations** matching Outlook's design language
-- [ ] **Platform-specific storage preferences** (e.g., Gmail synced, Outlook local-only)
+### Outlook Integration (v2.0) - Implementation Complete, Testing Needed
+- [x] **Outlook thread detection** for outlook.office365.com, outlook.office.com, and outlook.live.com (implemented)
+- [x] **Outlook-specific UI adaptations** matching Outlook's design language (implemented)
+- [x] **Platform-specific storage preferences** (Gmail and Outlook notes isolated by account) (implemented)
 
 ### Advanced Cloud Sync (v2.1)
 - [ ] **Real-time sync** instead of periodic file creation
@@ -220,8 +220,8 @@
 ✅ Improved account handling
 ✅ Timeout error handling
 
-**Next Up (v2.0.0)**:
-🎯 Outlook.office365.com thread detection
-🎯 Outlook-specific UI adaptations
-🎯 Per-account export system
-🎯 Platform-specific storage preferences
+**Next Up (v2.2.0)**:
+🎯 Visual indicators in Gmail thread list
+🎯 Basic search functionality across notes
+🎯 Gmail reading pane support
+🎯 AI-powered thread summaries integration

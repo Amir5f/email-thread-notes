@@ -1,7 +1,86 @@
 /* Outlook-specific styles for Email Thread Notes */
-/* This will be implemented in Phase 2 */
 
-.email-notes-panel.outlook {
-  /* Outlook-specific styling will go here */
+.outlook-notes-panel {
   font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+}
+
+.outlook-notes-panel.dragging {
+  opacity: 0.8;
+}
+
+.outlook-notes-panel.resizing {
+  user-select: none;
+}
+
+.outlook-notes-panel .notes-header {
+  background: #f3f2f1;
+  border-bottom: 1px solid #c8c6c4;
+}
+
+.outlook-notes-panel .notes-header h3 {
+  font-size: 16px;
+  font-weight: 600;
+  color: #323130;
+  margin: 0;
+}
+
+.outlook-notes-panel .thread-subject {
+  font-size: 12px;
+  color: #605e5c;
+  margin-top: 2px;
+  max-width: 200px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.outlook-notes-panel .notes-header-actions button {
+  background: transparent;
+  border: none;
+  color: #605e5c;
+  cursor: pointer;
+  font-size: 16px;
+  padding: 4px 8px;
+  border-radius: 2px;
+  margin-left: 4px;
+}
+
+.outlook-notes-panel .notes-header-actions button:hover {
+  background: #f3f2f1;
+  color: #323130;
+}
+
+.outlook-notes-panel .notes-footer {
+  background: #faf9f8;
+  border-top: 1px solid #edebe9;
+}
+
+.outlook-notes-panel .save-status {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.outlook-notes-panel .status-indicator {
+  font-size: 8px;
+  color: #605e5c;
+}
+
+.outlook-notes-panel .status-text {
+  font-size: 12px;
+  color: #605e5c;
+}
+
+.outlook-notes-panel .last-updated {
+  font-size: 11px;
+  color: #8a8886;
+}
+
+.outlook-notes-button {
+  font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif !important;
+}
+
+/* Outlook-specific resize handle */
+.outlook-notes-panel .resize-handle:hover {
+  background: linear-gradient(-45deg, transparent 30%, #605e5c 30%, #605e5c 40%, transparent 40%, transparent 50%, #605e5c 50%, #605e5c 60%, transparent 60%);
 }

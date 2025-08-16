@@ -76,7 +76,7 @@ document.addEventListener('DOMContentLoaded', async () => {
         platformInfoElement.textContent = 'Extension is disabled. Enable it using the toggle above.';
       }
       
-    } else if (tab.url.includes('outlook.office365.com') || tab.url.includes('outlook.live.com')) {
+    } else if (tab.url.includes('outlook.office365.com') || tab.url.includes('outlook.office.com') || tab.url.includes('outlook.live.com')) {
       currentPlatform = 'outlook';
       currentAccount = await detectOutlookAccount(tab.url);
       
@@ -116,11 +116,15 @@ document.addEventListener('DOMContentLoaded', async () => {
   async function detectOutlookAccount(url) {
     // Try to detect Outlook account from URL
     try {
-      const match = url.match(/outlook\.office365\.com\/mail\/([^\/]+)/);
-      const accountId = match ? match[1] : 'default';
+      const match = url.match(/outlook\.(office365|office)\.com\/mail\/([^\/]+)/) || 
+                    url.match(/outlook\.live\.com\/mail\/([^\/]+)/);
+      if (match) {
+        const accountId = match[2] || match[1]; // Handle different capture groups
+        return `Outlook Account (${accountId})`;
+      }
       
       // Return simple account identifier for now
-      return `Outlook Account (${accountId})`;
+      return 'Outlook Account';
     } catch (error) {
       console.error('Error detecting Outlook account:', error);
       return 'Outlook Account';
