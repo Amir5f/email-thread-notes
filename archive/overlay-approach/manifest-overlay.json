@@ -8,8 +8,7 @@
     "storage",
     "activeTab",
     "scripting",
-    "downloads",
-    "sidePanel"
+    "downloads"
   ],
   
   "host_permissions": [
@@ -24,7 +23,8 @@
       "matches": [
         "https://mail.google.com/*"
       ],
-      "js": ["content-scripts/gmail-sidebar.js"]
+      "js": ["content-scripts/gmail-simple.js"],
+      "css": ["styles/gmail.css"]
     },
     {
       "matches": [
@@ -32,7 +32,8 @@
         "https://outlook.office.com/*",
         "https://outlook.live.com/*"
       ],
-      "js": ["content-scripts/outlook-sidebar.js"]
+      "js": ["content-scripts/outlook.js"],
+      "css": ["styles/outlook.css"]
     }
   ],
   
@@ -41,11 +42,8 @@
   },
   
   "action": {
+    "default_popup": "popup.html",
     "default_title": "Email Thread Notes"
-  },
-  
-  "side_panel": {
-    "default_path": "sidebar.html"
   },
   
   "icons": {

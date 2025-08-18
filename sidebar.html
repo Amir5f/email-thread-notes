@@ -1,0 +1,400 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <title>Email Thread Notes</title>
+  <style>
+    body {
+      margin: 0;
+      padding: 0;
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Arial, sans-serif;
+      font-size: 15px;
+      background: #ffffff;
+      height: 100vh;
+      display: flex;
+      flex-direction: column;
+    }
+
+    .sidebar-header {
+      background: #f8f9fa;
+      border-bottom: 1px solid #dadce0;
+      padding: 16px;
+      flex-shrink: 0;
+    }
+
+    .sidebar-title {
+      font-size: 16px;
+      font-weight: 500;
+      color: #202124;
+      margin: 0 0 8px 0;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .platform-indicator {
+      font-size: 13px;
+      font-weight: 500;
+      color: #5f6368;
+      background: #e8f0fe;
+      padding: 6px 12px;
+      border-radius: 12px;
+      display: none;
+      margin-bottom: 12px;
+      text-align: center;
+    }
+
+
+    .button-row {
+      display: flex;
+      gap: 8px;
+      margin-top: 12px;
+    }
+
+    .sidebar-btn {
+      flex: 1;
+      padding: 8px 16px;
+      border: 1px solid #dadce0;
+      border-radius: 6px;
+      background: #ffffff;
+      color: #5f6368;
+      font-size: 13px;
+      cursor: pointer;
+      transition: all 0.2s;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 6px;
+    }
+
+    .sidebar-btn:hover {
+      background: #f8f9fa;
+      border-color: #9aa0a6;
+    }
+
+    .sidebar-btn.active {
+      background: #1a73e8;
+      color: #ffffff;
+      border-color: #1a73e8;
+    }
+
+    .sidebar-btn:disabled {
+      background: #f1f3f4;
+      color: #9aa0a6;
+      cursor: not-allowed;
+      border-color: #e8eaed;
+    }
+
+    .sidebar-content {
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      overflow: hidden;
+    }
+
+    .content-view {
+      flex: 1;
+      display: none;
+      flex-direction: column;
+      padding: 16px;
+    }
+
+    .content-view.active {
+      display: flex;
+    }
+
+    .loading-state {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      height: 200px;
+      color: #5f6368;
+      text-align: center;
+    }
+
+    .loading-spinner {
+      width: 24px;
+      height: 24px;
+      border: 2px solid #e8eaed;
+      border-top: 2px solid #1a73e8;
+      border-radius: 50%;
+      animation: spin 1s linear infinite;
+      margin-bottom: 12px;
+    }
+
+    @keyframes spin {
+      0% { transform: rotate(0deg); }
+      100% { transform: rotate(360deg); }
+    }
+
+    .thread-info {
+      background: #f8f9fa;
+      border: 1px solid #e8eaed;
+      border-radius: 6px;
+      padding: 12px;
+      margin-bottom: 16px;
+      font-size: 12px;
+    }
+
+    .thread-subject {
+      font-weight: 500;
+      color: #202124;
+      margin-bottom: 4px;
+    }
+
+    .thread-details {
+      color: #5f6368;
+    }
+
+    .notes-textarea {
+      flex: 1;
+      min-height: 250px;
+      max-height: 60vh;
+      padding: 12px;
+      border: 1px solid #dadce0;
+      border-radius: 6px;
+      font-family: inherit;
+      font-size: 15px;
+      line-height: 1.5;
+      resize: vertical;
+      outline: none;
+      transition: border-color 0.2s, direction 0.3s, text-align 0.3s;
+      direction: auto;
+      text-align: start;
+      unicode-bidi: plaintext;
+    }
+
+    .notes-textarea:focus {
+      border-color: #1a73e8;
+      box-shadow: 0 0 0 1px #1a73e8;
+    }
+
+    .notes-footer {
+      margin-top: 12px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      font-size: 12px;
+      color: #5f6368;
+    }
+
+    .notes-actions {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .save-btn, .delete-btn {
+      background: none;
+      border: none;
+      font-size: 14px;
+      cursor: pointer;
+      color: #5f6368;
+      padding: 4px 6px;
+      border-radius: 4px;
+      transition: all 0.2s;
+    }
+
+    .save-btn:hover {
+      background-color: #e8f5e8;
+      color: #34a853;
+    }
+
+    .delete-btn:hover {
+      background-color: #fee2e2;
+      color: #dc2626;
+    }
+
+    .save-status {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+    }
+
+    .status-indicator {
+      width: 8px;
+      height: 8px;
+      border-radius: 50%;
+      background: #9aa0a6;
+    }
+
+    .status-indicator.ready {
+      background: #9aa0a6;
+    }
+
+    .status-indicator.typing {
+      background: #fbbc04;
+    }
+
+    .status-indicator.saving {
+      background: #1a73e8;
+    }
+
+    .status-indicator.saved {
+      background: #34a853;
+    }
+
+    .status-indicator.error {
+      background: #ea4335;
+    }
+
+    .empty-state {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      height: 200px;
+      color: #5f6368;
+      text-align: center;
+    }
+
+    .empty-icon {
+      font-size: 48px;
+      margin-bottom: 16px;
+      opacity: 0.6;
+    }
+
+    .empty-title {
+      font-size: 14px;
+      font-weight: 500;
+      margin-bottom: 8px;
+    }
+
+    .empty-description {
+      font-size: 12px;
+      line-height: 1.4;
+      max-width: 280px;
+    }
+
+    .search-section {
+      padding: 12px 16px;
+      border-bottom: 1px solid #e8eaed;
+      background: #f8f9fa;
+      flex-shrink: 0;
+    }
+
+    .search-input {
+      width: 100%;
+      padding: 8px 12px;
+      border: 1px solid #dadce0;
+      border-radius: 6px;
+      font-size: 13px;
+      outline: none;
+      margin-bottom: 8px;
+      box-sizing: border-box;
+      text-align: center;
+    }
+
+    .search-input:focus {
+      border-color: #1a73e8;
+      box-shadow: 0 0 0 1px #1a73e8;
+    }
+
+    .filter-options {
+      display: flex;
+      gap: 8px;
+    }
+
+    .filter-select {
+      flex: 1;
+      padding: 4px 8px;
+      border: 1px solid #dadce0;
+      border-radius: 4px;
+      font-size: 11px;
+      background: white;
+      outline: none;
+    }
+
+    .filter-select:focus {
+      border-color: #1a73e8;
+    }
+
+    .notes-content {
+      flex: 1;
+      overflow: hidden;
+      display: flex;
+      flex-direction: column;
+    }
+  </style>
+</head>
+<body>
+  <div class="sidebar-header">
+    <div class="platform-indicator" id="platformIndicator">Gmail</div>
+    <div class="button-row">
+      <button class="sidebar-btn" id="threadNotesBtn" disabled>
+        📄 Thread Notes
+      </button>
+      <button class="sidebar-btn active" id="allNotesBtn">
+        📋 All Notes
+      </button>
+    </div>
+  </div>
+
+  <div class="sidebar-content">
+    <!-- Thread Notes View -->
+    <div class="content-view" id="threadNotesView">
+      <div class="thread-info" id="threadInfo" style="display: none;">
+        <div class="thread-subject" id="threadSubject">Loading...</div>
+        <div class="thread-details" id="threadDetails">Gmail • Account 1</div>
+      </div>
+      
+      <textarea 
+        class="notes-textarea" 
+        id="notesTextarea" 
+        placeholder="Add your private notes for this email thread..."
+      ></textarea>
+      
+      <div class="notes-footer">
+        <div class="save-status">
+          <div class="status-indicator ready" id="statusIndicator"></div>
+          <span id="statusText">Ready</span>
+        </div>
+        <div class="notes-actions">
+          <button class="save-btn" id="saveNoteBtn" title="Save note now">💾</button>
+          <button class="delete-btn" id="deleteNoteBtn" title="Delete this note">🗑️</button>
+          <div id="lastUpdated"></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- All Notes View -->
+    <div class="content-view active" id="allNotesView">
+      <div class="search-section">
+        <input 
+          type="text" 
+          id="notesSearchInput" 
+          placeholder="Search notes..." 
+          class="search-input"
+        >
+        <div class="filter-options">
+          <select id="sortFilter" class="filter-select">
+            <option value="recent">Recent First</option>
+            <option value="oldest">Oldest First</option>
+            <option value="subject">By Subject</option>
+          </select>
+        </div>
+      </div>
+      <div class="notes-content">
+        <div class="loading-state">
+          <div class="loading-spinner"></div>
+          <div>Loading your notes...</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- No Thread State -->
+    <div class="content-view" id="noThreadView">
+      <div class="empty-state">
+        <div class="empty-icon">📧</div>
+        <div class="empty-title">No Email Thread Detected</div>
+        <div class="empty-description">
+          Open a Gmail or Outlook conversation to add notes to that thread.
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script src="sidebar.js"></script>
+</body>
+</html>

@@ -614,36 +614,7 @@ const storageManager = new EmailNotesStorage();
 
 chrome.runtime.onInstalled.addListener(() => {
   console.log('Email Thread Notes extension installed');
-  
-  // Enable side panel for supported email domains
-  chrome.sidePanel.setPanelBehavior({ openPanelOnActionClick: true })
-    .catch((error) => console.error('Failed to set side panel behavior:', error));
 });
-
-// Handle extension icon click to open side panel
-chrome.action.onClicked.addListener((tab) => {
-  console.log('Extension icon clicked - side panel should open automatically');
-});
-
-// Listen for tab updates to manage sidebar visibility
-chrome.tabs.onUpdated.addListener((tabId, changeInfo, tab) => {
-  if (changeInfo.url) {
-    handleTabUrlChange(tabId, changeInfo.url);
-  }
-});
-
-chrome.tabs.onActivated.addListener((activeInfo) => {
-  chrome.tabs.get(activeInfo.tabId, (tab) => {
-    if (tab.url) {
-      handleTabUrlChange(activeInfo.tabId, tab.url);
-    }
-  });
-});
-
-function handleTabUrlChange(tabId, url) {
-  // Simplified - no platform restrictions for now
-  console.log('Tab URL changed, side panel remains available');
-}
 
 // Handle messages from content scripts
 chrome.runtime.onMessage.addListener((request, _sender, sendResponse) => {
