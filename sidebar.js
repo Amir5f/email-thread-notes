@@ -76,6 +76,42 @@ class EmailNotesSidebar {
       }
     });
 
+    // Settings toggle handler
+    const settingsToggle = document.getElementById('settingsToggle');
+    settingsToggle.addEventListener('click', () => {
+      this.toggleSettings();
+    });
+
+    // Export button handler
+    const exportBtn = document.getElementById('exportNotesBtn');
+    exportBtn.addEventListener('click', () => {
+      this.exportAllNotes();
+    });
+
+    // Import button handler
+    const importBtn = document.getElementById('importNotesBtn');
+    importBtn.addEventListener('click', () => {
+      document.getElementById('importFile').click();
+    });
+
+    // Import file handler
+    const importFile = document.getElementById('importFile');
+    importFile.addEventListener('change', (e) => {
+      this.handleImportFile(e);
+    });
+
+    // Auto-sync toggle handler
+    const autoSyncToggle = document.getElementById('autoSyncToggle');
+    autoSyncToggle.addEventListener('click', () => {
+      this.toggleAutoSync();
+    });
+
+    // Sync frequency change handler
+    const syncFrequency = document.getElementById('syncFrequency');
+    syncFrequency.addEventListener('change', (e) => {
+      this.handleSyncFrequencyChange(e.target.value);
+    });
+
     // Setup keyboard shortcuts
     this.setupKeyboardShortcuts();
     
@@ -243,6 +279,9 @@ class EmailNotesSidebar {
   async loadInitialState() {
     // Load all notes for the All Notes view
     await this.loadAllNotesView();
+    
+    // Load auto-sync state
+    await this.loadAutoSyncState();
     
     // Show the All Notes view by default
     this.switchToAllNotesView();
@@ -1139,6 +1178,106 @@ class EmailNotesSidebar {
     return div.innerHTML;
   }
 
+  toggleSettings() {
+    const settingsPanel = document.getElementById('sidebarSettings');
+    const settingsToggle = document.getElementById('settingsToggle');
+    
+    if (settingsPanel.style.display === 'none') {
+      settingsPanel.style.display = 'block';
+      settingsToggle.classList.add('active');
+    } else {
+      settingsPanel.style.display = 'none';
+      settingsToggle.classList.remove('active');
+    }
+  }
+
+  async exportAllNotes() {
+    try {
+      this.showSettingsStatus('Exporting notes...', 'info');
+      
+      const response = await chrome.runtime.sendMessage({ action: 'exportNotes' });
+      
+      if (response.success) {
+        this.showSettingsStatus(`✓ Exported ${response.notesCount} notes successfully`, 'success');
+        
+        // Hide status after 3 seconds
+        setTimeout(() => {
+          this.hideSettingsStatus();
+        }, 3000);
+      } else {
+        this.showSettingsStatus('✗ Export failed: ' + (response.error || 'Unknown error'), 'error');
+      }
+    } catch (error) {
+      console.error('Export error:', error);
+      this.showSettingsStatus('✗ Export error occurred', 'error');
+    }
+  }
+
+  async handleImportFile(event) {
+    const file = event.target.files[0];
+    if (!file) return;
+    
+    try {
+      this.showSettingsStatus('Reading import file...', 'info');
+      
+      const fileContent = await this.readFileAsText(file);
+      
+      this.showSettingsStatus('Importing notes...', 'info');
+      
+      const response = await chrome.runtime.sendMessage({
+        action: 'importNotes',
+        fileContent: fileContent,
+        options: { merge: false, overwrite: true }
+      });
+      
+      if (response.success) {
+        const { imported, skipped, errors } = response;
+        let message = `✓ Import completed: ${imported} imported`;
+        if (skipped > 0) message += `, ${skipped} skipped`;
+        if (errors > 0) message += `, ${errors} errors`;
+        
+        this.showSettingsStatus(message, 'success');
+        
+        // Refresh the notes list to show imported notes
+        this.loadAllNotesView();
+        
+        // Hide status after 5 seconds
+        setTimeout(() => {
+          this.hideSettingsStatus();
+        }, 5000);
+      } else {
+        this.showSettingsStatus('✗ Import failed: ' + (response.error || 'Unknown error'), 'error');
+      }
+    } catch (error) {
+      console.error('Import error:', error);
+      this.showSettingsStatus('✗ Import error: Invalid file format', 'error');
+    }
+    
+    // Reset file input
+    event.target.value = '';
+  }
+
+  readFileAsText(file) {
+    return new Promise((resolve, reject) => {
+      const reader = new FileReader();
+      reader.onload = (e) => resolve(e.target.result);
+      reader.onerror = (e) => reject(e);
+      reader.readAsText(file);
+    });
+  }
+
+  showSettingsStatus(message, type = 'info') {
+    const statusElement = document.getElementById('settingsStatus');
+    statusElement.textContent = message;
+    statusElement.className = `settings-status ${type}`;
+    statusElement.style.display = 'block';
+  }
+
+  hideSettingsStatus() {
+    const statusElement = document.getElementById('settingsStatus');
+    statusElement.style.display = 'none';
+  }
+
   detectAndSetTextDirection(textarea) {
     const text = textarea.value;
     if (!text.trim()) {
@@ -1280,6 +1419,106 @@ class EmailNotesSidebar {
     
     // Trigger input event for auto-save
     textarea.dispatchEvent(new Event('input', { bubbles: true }));
+  }
+
+  // Auto-sync functionality
+  async toggleAutoSync() {
+    const toggle = document.getElementById('autoSyncToggle');
+    const syncSettings = document.getElementById('syncSettings');
+    const isActive = toggle.classList.contains('active');
+    
+    try {
+      if (isActive) {
+        // Disable auto-sync
+        const response = await chrome.runtime.sendMessage({ action: 'disableAutoSync' });
+        if (response.success) {
+          toggle.classList.remove('active');
+          syncSettings.style.display = 'none';
+          this.showSettingsStatus('✓ Auto-sync disabled', 'success');
+        } else {
+          this.showSettingsStatus('✗ Failed to disable auto-sync', 'error');
+        }
+      } else {
+        // Enable auto-sync
+        const frequency = document.getElementById('syncFrequency').value;
+        const response = await chrome.runtime.sendMessage({ 
+          action: 'enableAutoSync',
+          frequency: parseInt(frequency)
+        });
+        if (response.success) {
+          toggle.classList.add('active');
+          syncSettings.style.display = 'block';
+          this.showSettingsStatus(`✓ Auto-sync enabled (every ${frequency} min)`, 'success');
+        } else {
+          this.showSettingsStatus('✗ Failed to enable auto-sync', 'error');
+        }
+      }
+      
+      // Hide status after 3 seconds
+      setTimeout(() => {
+        this.hideSettingsStatus();
+      }, 3000);
+      
+    } catch (error) {
+      console.error('Error toggling auto-sync:', error);
+      this.showSettingsStatus('✗ Error toggling auto-sync', 'error');
+      setTimeout(() => {
+        this.hideSettingsStatus();
+      }, 3000);
+    }
+  }
+
+  async handleSyncFrequencyChange(frequency) {
+    const toggle = document.getElementById('autoSyncToggle');
+    const isActive = toggle.classList.contains('active');
+    
+    if (isActive) {
+      try {
+        const response = await chrome.runtime.sendMessage({ 
+          action: 'enableAutoSync',
+          frequency: parseInt(frequency)
+        });
+        if (response.success) {
+          this.showSettingsStatus(`✓ Sync frequency updated to ${frequency} min`, 'success');
+        } else {
+          this.showSettingsStatus('✗ Failed to update frequency', 'error');
+        }
+        
+        setTimeout(() => {
+          this.hideSettingsStatus();
+        }, 3000);
+        
+      } catch (error) {
+        console.error('Error updating sync frequency:', error);
+        this.showSettingsStatus('✗ Error updating frequency', 'error');
+        setTimeout(() => {
+          this.hideSettingsStatus();
+        }, 3000);
+      }
+    }
+  }
+
+  async loadAutoSyncState() {
+    try {
+      const response = await chrome.runtime.sendMessage({ action: 'getSyncSettings' });
+      if (response.settings) {
+        const toggle = document.getElementById('autoSyncToggle');
+        const syncSettings = document.getElementById('syncSettings');
+        const syncFrequency = document.getElementById('syncFrequency');
+        
+        if (response.settings.enabled) {
+          toggle.classList.add('active');
+          syncSettings.style.display = 'block';
+        } else {
+          toggle.classList.remove('active');
+          syncSettings.style.display = 'none';
+        }
+        
+        syncFrequency.value = response.settings.frequency || 5;
+      }
+    } catch (error) {
+      console.error('Error loading auto-sync state:', error);
+    }
   }
 }
 

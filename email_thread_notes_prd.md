@@ -38,6 +38,8 @@ A lightweight Chrome extension that:
 ### 3. User Interface
 - **Chrome Side Panel Integration**: Native browser sidebar panel for persistent access
 - **Dual Button Interface**: Separate "Thread Notes" and "All Notes" buttons for clear functionality
+- **Settings Panel**: Collapsible settings with export/import and auto-sync controls
+- **Auto-Sync Controls**: Toggle switch and frequency selection (1-60 minutes) for automatic backups
 - **Cross-Platform Consistency**: Identical experience across Gmail and Outlook
 - **Responsive Design**: Sidebar automatically adapts to different screen sizes
 - **No DOM Conflicts**: Eliminates UI integration complexity by using browser-native panel
@@ -48,8 +50,9 @@ A lightweight Chrome extension that:
 - **Local Storage Fallback**: All data always cached locally using chrome.storage.local API
 - **Optional Cloud Sync**: Integration with Google Drive, iCloud Drive, for cross-device sync
 - **Privacy-First Design**: Users control what data syncs vs stays local
-- **Data Export**: Allow users to export their notes for backup
-- **Data Import**: Allow users to import previously exported notes
+- **Data Export/Import**: Complete backup and restore functionality via sidebar settings panel
+- **Manual Export**: One-click export of all notes to JSON file with metadata
+- **Import with Validation**: Restore notes from backup with conflict detection and error handling
 - **Storage Management**: Handle both local and cloud storage limits gracefully
 - **Sync Conflict Resolution**: Handle conflicts when same note edited on multiple devices
 
@@ -218,9 +221,12 @@ A lightweight Chrome extension that:
 
 ## 🎉 CURRENT STATE (v2.1.0 - Chrome Side Panel Architecture)
 
-### Recently Completed Features (v2.1.0)
+### Recently Completed Features (v2.1.1)
 - ✅ **Chrome Side Panel Migration**: Fully migrated from overlay to native Chrome Side Panel API
 - ✅ **Dual Button Interface**: "Thread Notes" and "All Notes" buttons with smart state management
+- ✅ **Settings Panel Integration**: Added collapsible settings panel with export/import functionality
+- ✅ **Auto-Sync Sidebar Controls**: Toggle switch and frequency selection (1-60 min) in sidebar
+- ✅ **UI Visual Improvements**: Fixed button positioning, toggle styling, and text cutoff issues
 - ✅ **Content Script Simplification**: Thread detection only, no UI injection complexity
 - ✅ **Cross-Platform Messaging**: Unified messaging between content scripts and sidebar
 - ✅ **Enhanced Thread Detection**: Improved Gmail and Outlook thread identification

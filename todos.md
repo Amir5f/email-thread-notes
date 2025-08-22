@@ -25,17 +25,19 @@
 
 ## 📝 Recently Completed Tasks
 
-- ✅ **UI/UX Improvements**: Removed extension title, centered search box, increased font sizes
-- ✅ **URL Parsing Fixes**: Robust error handling for invalid URLs on email domains
-- ✅ **Platform-Aware Messaging**: Context-sensitive help messages
+- ✅ **Import/Export Recovery**: Re-introduced sidebar settings panel with complete export/import functionality
+- ✅ **Auto-Sync Controls**: Added toggle switch and frequency selection (1-60 minutes) to sidebar settings
+- ✅ **UI Visual Fixes**: Fixed settings button positioning, auto-sync toggle sizing, and text cutoff issues
+- ✅ **CSS Conflicts Resolution**: Separated settings button and auto-sync toggle CSS classes for proper styling
 
 ---
 
 ## 🚀 Immediate Next Steps
 
 ### Agreed Priority: Missing Features & Code Cleanup
-- [ ] **Re-introduce import/export functionality** - Restore the notes list import/export feature that was lost
-- [ ] **Add UI indication for file location** - Help menu showing where files are saved
+- [x] **Re-introduce import/export functionality** - ✅ COMPLETED: Added settings panel with export/import buttons to sidebar
+- [x] **Add auto-sync controls to sidebar** - ✅ COMPLETED: Added toggle switch and frequency controls (1-60 min options)
+- [x] **Add UI indication for file location** - Help menu showing where files are saved
 - [ ] **Re-introduce sync setup dialogue** - Help menu explaining cross-device sync setup
 - [ ] **Basic markdown rendering in input box** - Real-time markdown rendering in the textarea
 - [ ] **Capture account email properly** - Platform categorization isn't enough, need actual email
@@ -88,9 +90,9 @@
 
 ## 📊 Current Status
 
-**Version**: v2.1.0 (Chrome Side Panel Architecture)  
-**Status**: Production ready with 80% of core functionality complete  
-**Next Milestone**: v2.2.0 (Code Cleanup & Advanced Features)
+**Version**: v2.1.1 (Settings Panel & Auto-Sync Integration)  
+**Status**: Production ready with 85% of core functionality complete  
+**Next Milestone**: v2.2.0 (Advanced Features & Code Cleanup)
 
 **Architecture**: Chrome Side Panel API with simplified content scripts  
 **Platforms**: Gmail and Outlook web clients  

@@ -32,6 +32,14 @@
       gap: 8px;
     }
 
+    .header-top {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 12px;
+      width: 100%;
+    }
+
     .platform-indicator {
       font-size: 13px;
       font-weight: 500;
@@ -40,8 +48,27 @@
       padding: 6px 12px;
       border-radius: 12px;
       display: none;
-      margin-bottom: 12px;
       text-align: center;
+    }
+
+    .settings-toggle {
+      background: none;
+      border: none;
+      font-size: 16px;
+      cursor: pointer;
+      padding: 6px;
+      border-radius: 4px;
+      transition: background-color 0.2s;
+      color: #5f6368;
+    }
+
+    .settings-toggle:hover {
+      background-color: #f1f3f4;
+    }
+
+    .settings-toggle.active {
+      background-color: #e8f0fe;
+      color: #1a73e8;
     }
 
 
@@ -53,7 +80,11 @@
 
     .sidebar-btn {
       flex: 1;
-      padding: 8px 16px;
+      padding: 8px 12px;
+      min-width: 0;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
       border: 1px solid #dadce0;
       border-radius: 6px;
       background: #ffffff;
@@ -316,11 +347,203 @@
       display: flex;
       flex-direction: column;
     }
+
+    /* Settings Panel Styles */
+    .sidebar-settings {
+      background: #f8f9fa;
+      border-bottom: 1px solid #dadce0;
+      padding: 16px;
+      flex-shrink: 0;
+    }
+
+    .settings-header h4 {
+      margin: 0 0 16px 0;
+      font-size: 14px;
+      font-weight: 500;
+      color: #202124;
+    }
+
+    .settings-section {
+      margin-bottom: 16px;
+    }
+
+    .settings-section:last-child {
+      margin-bottom: 0;
+    }
+
+    .settings-btn {
+      width: 100%;
+      padding: 10px 16px;
+      border: 1px solid #dadce0;
+      border-radius: 6px;
+      background: #ffffff;
+      color: #5f6368;
+      font-size: 13px;
+      font-weight: 500;
+      cursor: pointer;
+      transition: all 0.2s;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 8px;
+    }
+
+    .settings-btn:hover {
+      background: #f8f9fa;
+      border-color: #9aa0a6;
+    }
+
+    .export-btn:hover {
+      background: #e8f5e8;
+      border-color: #34a853;
+      color: #34a853;
+    }
+
+    .import-btn:hover {
+      background: #e8f0fe;
+      border-color: #1a73e8;
+      color: #1a73e8;
+    }
+
+    .help-text {
+      font-size: 11px;
+      color: #5f6368;
+      margin-top: 6px;
+      line-height: 1.4;
+    }
+
+    .file-location {
+      background: #fff3cd;
+      border: 1px solid #ffeaa7;
+      border-radius: 6px;
+      padding: 12px;
+    }
+
+    .file-location .help-text {
+      color: #856404;
+      margin-top: 0;
+    }
+
+    .file-location code {
+      background: rgba(0,0,0,0.1);
+      padding: 2px 4px;
+      border-radius: 3px;
+      font-family: 'Courier New', monospace;
+      font-size: 10px;
+      word-break: break-all;
+    }
+
+    .settings-status {
+      padding: 8px 12px;
+      border-radius: 6px;
+      font-size: 12px;
+      font-weight: 500;
+      margin-top: 12px;
+    }
+
+    .settings-status.success {
+      background: #e8f5e8;
+      color: #34a853;
+      border: 1px solid #34a853;
+    }
+
+    .settings-status.error {
+      background: #fee2e2;
+      color: #dc2626;
+      border: 1px solid #dc2626;
+    }
+
+    .settings-status.info {
+      background: #e8f0fe;
+      color: #1a73e8;
+      border: 1px solid #1a73e8;
+    }
+
+    /* Auto-Sync Toggle Styles */
+    .sync-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 12px;
+      font-size: 14px;
+      font-weight: 500;
+      color: #202124;
+    }
+
+    .sync-toggle {
+      width: 32px;
+      height: 18px;
+      background: #dadce0;
+      border-radius: 9px;
+      position: relative;
+      cursor: pointer;
+      transition: background 0.3s ease;
+      flex-shrink: 0;
+    }
+
+    .sync-toggle.active {
+      background: #1a73e8;
+    }
+
+    .sync-toggle-slider {
+      width: 14px;
+      height: 14px;
+      background: #ffffff;
+      border-radius: 50%;
+      position: absolute;
+      top: 2px;
+      left: 2px;
+      transition: transform 0.3s ease;
+      box-shadow: 0 1px 2px rgba(0,0,0,0.2);
+    }
+
+    .sync-toggle.active .sync-toggle-slider {
+      transform: translateX(14px);
+    }
+
+    /* Sync Settings Styles */
+    .sync-settings {
+      margin-bottom: 8px;
+    }
+
+    .sync-option {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      margin-bottom: 8px;
+    }
+
+    .sync-option label {
+      font-size: 12px;
+      color: #5f6368;
+      min-width: 80px;
+    }
+
+    .sync-select {
+      padding: 6px 8px;
+      border: 1px solid #dadce0;
+      border-radius: 4px;
+      background: #ffffff;
+      color: #202124;
+      font-size: 12px;
+      cursor: pointer;
+      outline: none;
+    }
+
+    .sync-select:focus {
+      border-color: #1a73e8;
+      box-shadow: 0 0 0 2px rgba(26, 115, 232, 0.2);
+    }
   </style>
 </head>
 <body>
   <div class="sidebar-header">
-    <div class="platform-indicator" id="platformIndicator">Gmail</div>
+    <div class="header-top">
+      <div class="platform-indicator" id="platformIndicator">Gmail</div>
+      <button class="settings-toggle" id="settingsToggle" title="Settings & Export/Import">
+        ⚙️
+      </button>
+    </div>
     <div class="button-row">
       <button class="sidebar-btn" id="threadNotesBtn" disabled>
         📄 Thread Notes
@@ -329,6 +552,64 @@
         📋 All Notes
       </button>
     </div>
+  </div>
+
+  <!-- Settings Panel -->
+  <div class="sidebar-settings" id="sidebarSettings" style="display: none;">
+    <div class="settings-header">
+      <h4>📦 Backup & Data</h4>
+    </div>
+    
+    <!-- Export Section -->
+    <div class="settings-section">
+      <button id="exportNotesBtn" class="settings-btn export-btn">
+        📥 Export All Notes
+      </button>
+      <div class="help-text">Download backup of all your notes</div>
+    </div>
+    
+    <!-- Import Section -->
+    <div class="settings-section">
+      <button id="importNotesBtn" class="settings-btn import-btn">
+        📤 Import Notes
+      </button>
+      <input type="file" id="importFile" accept=".json" style="display: none;">
+      <div class="help-text">Restore notes from backup file</div>
+    </div>
+    
+    <!-- Auto-Sync Section -->
+    <div class="settings-section">
+      <div class="sync-header">
+        <span>⏳ Auto-Sync</span>
+        <div id="autoSyncToggle" class="sync-toggle">
+          <div class="sync-toggle-slider"></div>
+        </div>
+      </div>
+      <div id="syncSettings" class="sync-settings" style="display: none;">
+        <div class="sync-option">
+          <label for="syncFrequency">Sync every:</label>
+          <select id="syncFrequency" class="sync-select">
+            <option value="1">1 minute</option>
+            <option value="5" selected>5 minutes</option>
+            <option value="15">15 minutes</option>
+            <option value="30">30 minutes</option>
+            <option value="60">1 hour</option>
+          </select>
+        </div>
+      </div>
+      <div class="help-text">Automatically backup notes to disk</div>
+    </div>
+
+    <!-- File Location Info -->
+    <div class="settings-section file-location">
+      <div class="help-text">
+        📁 <strong>Auto-backup location:</strong><br>
+        <code>Downloads/EmailNotes/EmailNotes/email-notes-sync.json</code>
+      </div>
+    </div>
+
+    <!-- Status Display -->
+    <div id="settingsStatus" class="settings-status" style="display: none;"></div>
   </div>
 
   <div class="sidebar-content">
