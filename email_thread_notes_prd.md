@@ -219,9 +219,15 @@ A lightweight Chrome extension that:
 
 ---
 
-## 🎉 CURRENT STATE (v2.1.0 - Chrome Side Panel Architecture)
+## 🎉 CURRENT STATE (v2.1.2 - Storage Format Optimization & Codebase Restructuring)
 
-### Recently Completed Features (v2.1.1)
+### Recently Completed Features (v2.1.2)
+- ✅ **HTML Storage Format**: Migrated from markdown to HTML-based rich text storage for better performance
+- ✅ **Library Optimization**: Removed snarkdown and DOMPurify dependencies for cleaner architecture  
+- ✅ **Codebase Restructuring**: Organized files into src/, assets/, lib/ directories for maintainability
+- ✅ **Manifest Updates**: Updated all file paths to reflect new directory structure
+
+### Previously Completed Features (v2.1.1)
 - ✅ **Chrome Side Panel Migration**: Fully migrated from overlay to native Chrome Side Panel API
 - ✅ **Dual Button Interface**: "Thread Notes" and "All Notes" buttons with smart state management
 - ✅ **Settings Panel Integration**: Added collapsible settings panel with export/import functionality

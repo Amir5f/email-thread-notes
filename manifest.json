@@ -1,7 +1,7 @@
 {
   "manifest_version": 3,
   "name": "Email Thread Notes",
-  "version": "2.1.0",
+  "version": "2.1.2",
   "description": "Add private, persistent notes to email threads in Gmail and Outlook",
   
   "permissions": [
@@ -24,7 +24,7 @@
       "matches": [
         "https://mail.google.com/*"
       ],
-      "js": ["content-scripts/gmail-sidebar.js"]
+      "js": ["src/gmail-sidebar.js"]
     },
     {
       "matches": [
@@ -32,12 +32,12 @@
         "https://outlook.office.com/*",
         "https://outlook.live.com/*"
       ],
-      "js": ["content-scripts/outlook-sidebar.js"]
+      "js": ["src/outlook-sidebar.js"]
     }
   ],
   
   "background": {
-    "service_worker": "background.js"
+    "service_worker": "src/background.js"
   },
   
   "action": {
@@ -45,12 +45,12 @@
   },
   
   "side_panel": {
-    "default_path": "sidebar.html"
+    "default_path": "src/sidebar.html"
   },
   
   "icons": {
-    "64": "icons/icon_64x64.png",
-    "48": "icons/icon_48x48.png",
-    "128": "icons/icon_128x128.png"
+    "64": "assets/icons/icon_64x64.png",
+    "48": "assets/icons/icon_48x48.png",
+    "128": "assets/icons/icon_128x128.png"
   }
 }

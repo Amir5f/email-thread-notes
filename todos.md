@@ -25,6 +25,9 @@
 
 ## 📝 Recently Completed Tasks
 
+- ✅ **Storage Format Migration**: Updated from markdown to HTML format for better rich text support
+- ✅ **Library Dependencies Cleanup**: Removed snarkdown and DOMPurify dependencies for cleaner architecture
+- ✅ **Codebase Restructuring**: Organized files into src/, assets/, lib/ directories with updated manifest
 - ✅ **Import/Export Recovery**: Re-introduced sidebar settings panel with complete export/import functionality
 - ✅ **Auto-Sync Controls**: Added toggle switch and frequency selection (1-60 minutes) to sidebar settings
 - ✅ **UI Visual Fixes**: Fixed settings button positioning, auto-sync toggle sizing, and text cutoff issues
@@ -90,9 +93,9 @@
 
 ## 📊 Current Status
 
-**Version**: v2.1.1 (Settings Panel & Auto-Sync Integration)  
-**Status**: Production ready with 85% of core functionality complete  
-**Next Milestone**: v2.2.0 (Advanced Features & Code Cleanup)
+**Version**: v2.1.2 (Storage Format Optimization & Codebase Restructuring)  
+**Status**: Production ready with 90% of core functionality complete  
+**Next Milestone**: v2.2.0 (Advanced Features & Performance)
 
 **Architecture**: Chrome Side Panel API with simplified content scripts  
 **Platforms**: Gmail and Outlook web clients  

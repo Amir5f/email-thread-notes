@@ -178,27 +178,54 @@
       color: #5f6368;
     }
 
-    .notes-textarea {
-      flex: 1;
-      min-height: 250px;
-      max-height: 60vh;
-      padding: 12px;
-      border: 1px solid #dadce0;
-      border-radius: 6px;
-      font-family: inherit;
-      font-size: 15px;
-      line-height: 1.5;
-      resize: vertical;
-      outline: none;
-      transition: border-color 0.2s, direction 0.3s, text-align 0.3s;
-      direction: auto;
-      text-align: start;
-      unicode-bidi: plaintext;
-    }
 
-    .notes-textarea:focus {
-      border-color: #1a73e8;
-      box-shadow: 0 0 0 1px #1a73e8;
+    /* Quill Editor Customization */
+    .ql-toolbar {
+      border: 1px solid #dadce0 !important;
+      border-bottom: none !important;
+      border-radius: 6px 6px 0 0 !important;
+      background: #f8f9fa;
+    }
+    
+    .ql-container {
+      border: 1px solid #dadce0 !important;
+      border-radius: 0 0 6px 6px !important;
+      font-family: inherit !important;
+      font-size: 15px !important;
+    }
+    
+    .ql-editor {
+      min-height: 320px;
+      padding: 12px !important;
+      line-height: 1.5 !important;
+    }
+    
+    .ql-editor.ql-blank::before {
+      content: 'Add your private notes for this email thread...' !important;
+      color: #9aa0a6 !important;
+      font-style: normal !important;
+    }
+    
+    /* Focus styling */
+    .ql-container.ql-snow {
+      transition: border-color 0.2s;
+    }
+    
+    .ql-editor:focus {
+      outline: none;
+    }
+    
+    /* Ensure Quill toolbar buttons match our design */
+    .ql-toolbar .ql-formats {
+      margin-right: 8px;
+    }
+    
+    .ql-toolbar button:hover {
+      color: #1a73e8 !important;
+    }
+    
+    .ql-toolbar button.ql-active {
+      color: #1a73e8 !important;
     }
 
     .notes-footer {
@@ -535,6 +562,9 @@
       box-shadow: 0 0 0 2px rgba(26, 115, 232, 0.2);
     }
   </style>
+  <!-- Quill.js CSS -->
+  <link rel="stylesheet" href="../lib/quill.core.css">
+  <link rel="stylesheet" href="../lib/quill.snow.css">
 </head>
 <body>
   <div class="sidebar-header">
@@ -619,12 +649,9 @@
         <div class="thread-subject" id="threadSubject">Loading...</div>
         <div class="thread-details" id="threadDetails">Gmail • Account 1</div>
       </div>
-      
-      <textarea 
-        class="notes-textarea" 
-        id="notesTextarea" 
-        placeholder="Add your private notes for this email thread..."
-      ></textarea>
+
+      <!-- Quill Rich Text Editor -->
+      <div id="quillEditor" style="min-height: 350px; max-height: 60vh;"></div>
       
       <div class="notes-footer">
         <div class="save-status">
@@ -676,6 +703,10 @@
     </div>
   </div>
 
+  <!-- Quill.js Rich Text Editor -->
+  <script src="../lib/quill.min.js"></script>
+  
+  
   <script src="sidebar.js"></script>
 </body>
 </html>

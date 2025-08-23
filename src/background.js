@@ -55,14 +55,6 @@ class EmailNotesStorage {
       const storageKey = `${this.storagePrefix}${threadId}`;
       console.log('Background: Getting note for threadId:', threadId, 'using key:', storageKey);
       
-      // DEBUG: Get ALL storage to see what's actually stored
-      const allStorage = await chrome.storage.local.get(null);
-      console.log('Background: ALL STORAGE CONTENTS:');
-      Object.keys(allStorage).forEach(key => {
-        if (key.startsWith(this.storagePrefix)) {
-          console.log(`  ${key}: ${JSON.stringify(allStorage[key])}`);
-        }
-      });
       
       const result = await chrome.storage.local.get([storageKey]);
       const note = result[storageKey] || null;
@@ -767,4 +759,21 @@ chrome.runtime.onMessage.addListener((request, _sender, sendResponse) => {
 
   handleAsync();
   return true; // Keep message channel open for async response
+});
+
+// Cleanup timers when service worker is suspended/terminated
+chrome.runtime.onSuspend.addListener(() => {
+  console.log('Background: Service worker suspending, cleaning up timers');
+  
+  if (storageManager.syncTimer) {
+    clearInterval(storageManager.syncTimer);
+    storageManager.syncTimer = null;
+    console.log('Background: Auto-sync timer cleaned up');
+  }
+  
+  if (storageManager.debouncedBackupTimer) {
+    clearTimeout(storageManager.debouncedBackupTimer);
+    storageManager.debouncedBackupTimer = null;
+    console.log('Background: Debounced backup timer cleaned up');
+  }
 });

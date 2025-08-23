@@ -34,12 +34,15 @@ class EmailNotesSidebar {
       this.switchToAllNotesView();
     });
 
-    // Textarea input handler for auto-save and RTL detection
-    const textarea = document.getElementById('notesTextarea');
-    textarea.addEventListener('input', () => {
-      this.handleNotesInput();
-      this.detectAndSetTextDirection(textarea);
-    });
+    // Initialize Quill editor after DOM is ready
+    setTimeout(() => {
+      try {
+        this.initQuillEditor();
+      } catch (error) {
+        console.error('Failed to initialize Quill:', error);
+        this.createFallbackEditor();
+      }
+    }, 50);
 
     // Save button handler
     const saveBtn = document.getElementById('saveNoteBtn');
@@ -112,6 +115,8 @@ class EmailNotesSidebar {
       this.handleSyncFrequencyChange(e.target.value);
     });
 
+    // Quill editor will be initialized above
+    
     // Setup keyboard shortcuts
     this.setupKeyboardShortcuts();
     
@@ -139,11 +144,7 @@ class EmailNotesSidebar {
         }
       }
 
-      // Rich text formatting shortcuts when textarea is focused
-      const textarea = document.getElementById('notesTextarea');
-      if (textarea && e.target === textarea) {
-        this.handleFormattingShortcuts(e, textarea);
-      }
+      // Rich text formatting shortcuts handled by Quill
 
       // Escape to clear search
       if (e.key === 'Escape') {
@@ -172,10 +173,10 @@ class EmailNotesSidebar {
       }
     });
 
-    // Save when user clicks outside the textarea (loses focus)
+    // Save when user clicks outside the editor (loses focus)
     document.addEventListener('click', (e) => {
-      const textarea = document.getElementById('notesTextarea');
-      if (textarea && e.target !== textarea && this.hasPendingChanges()) {
+      const quillContainer = document.querySelector('#quillEditor');
+      if (quillContainer && !quillContainer.contains(e.target) && this.hasPendingChanges()) {
         this.saveCurrentNoteImmediately();
       }
     });
@@ -238,9 +239,10 @@ class EmailNotesSidebar {
       ];
       
       let isEmailDomain = false;
+      let url = null;
       if (activeTab.url) {
         try {
-          const url = new URL(activeTab.url);
+          url = new URL(activeTab.url);
           isEmailDomain = supportedDomains.some(domain => url.hostname === domain);
         } catch (urlError) {
           console.log('Could not parse URL, treating as non-email domain');
@@ -248,7 +250,7 @@ class EmailNotesSidebar {
         }
       }
       
-      if (isEmailDomain) {
+      if (isEmailDomain && url) {
         // Send message to content script to get current thread info
         chrome.tabs.sendMessage(activeTab.id, { action: 'getCurrentThread' }, (response) => {
           if (chrome.runtime.lastError) {
@@ -472,11 +474,22 @@ class EmailNotesSidebar {
         threadId: this.currentThreadId
       });
       
-      const textarea = document.getElementById('notesTextarea');
       const lastUpdated = document.getElementById('lastUpdated');
       
       if (response.note) {
-        textarea.value = response.note.content || '';
+        // Load content into Quill editor
+        const content = response.note.content || '';
+        
+        if (this.quill) {
+          // Set content in Quill (supports HTML)
+          this.quill.root.innerHTML = content;
+        } else if (this.fallbackEditor) {
+          // Fallback: extract text content from HTML
+          const tempDiv = document.createElement('div');
+          tempDiv.innerHTML = content;
+          this.fallbackEditor.value = tempDiv.textContent || tempDiv.innerText || '';
+        }
+        
         if (response.note.lastModified) {
           lastUpdated.textContent = this.formatTimestamp(new Date(response.note.lastModified));
         }
@@ -487,16 +500,27 @@ class EmailNotesSidebar {
           this.updateSaveStatus('ready', 'Ready');
         }, 1000);
       } else {
-        textarea.value = '';
+        if (this.quill) {
+          this.quill.setText('');
+        } else if (this.fallbackEditor) {
+          this.fallbackEditor.value = '';
+        }
         lastUpdated.textContent = '';
         this.updateSaveStatus('ready', 'Ready');
       }
       
-      // Detect and set text direction for loaded content
-      this.detectAndSetTextDirection(textarea);
-      
-      // Focus textarea
-      setTimeout(() => textarea.focus(), 100);
+      // Focus editor
+      setTimeout(() => {
+        try {
+          if (this.quill && this.quill.focus) {
+            this.quill.focus();
+          } else if (this.fallbackEditor) {
+            this.fallbackEditor.focus();
+          }
+        } catch (error) {
+          console.log('Could not focus editor:', error);
+        }
+      }, 100);
       
     } catch (error) {
       console.error('Error loading thread notes:', error);
@@ -664,9 +688,11 @@ class EmailNotesSidebar {
     const notesContent = document.querySelector('#allNotesView .notes-content');
     
     const notesHtml = noteEntries.map(([threadId, noteData]) => {
-      const preview = noteData.content.length > 100 
-        ? noteData.content.substring(0, 100) + '...' 
-        : noteData.content;
+      // Extract text content from HTML for preview
+      const cleanContent = this.extractTextFromHtml(noteData.content);
+      const preview = cleanContent.length > 100 
+        ? cleanContent.substring(0, 100) + '...' 
+        : cleanContent;
       const timestamp = this.formatTimestamp(new Date(noteData.lastModified || noteData.timestamp));
       const subject = noteData.subject || 'No Subject';
       const platform = noteData.platform || 'gmail';
@@ -996,8 +1022,8 @@ class EmailNotesSidebar {
   async saveCurrentNote() {
     if (!this.currentThreadId) return;
     
-    const textarea = document.getElementById('notesTextarea');
-    const content = textarea.value.trim();
+    const content = this.quill ? this.quill.root.innerHTML.trim() : 
+                   this.fallbackEditor ? this.fallbackEditor.value.trim() : '';
     
     try {
       // Clear typing timeout since we're now saving
@@ -1110,9 +1136,12 @@ class EmailNotesSidebar {
       });
       
       if (response.success) {
-        // Clear the textarea
-        const textarea = document.getElementById('notesTextarea');
-        textarea.value = '';
+        // Clear the editor
+        if (this.quill) {
+          this.quill.setText('');
+        } else if (this.fallbackEditor) {
+          this.fallbackEditor.value = '';
+        }
         
         // Clear last updated
         const lastUpdated = document.getElementById('lastUpdated');
@@ -1278,148 +1307,53 @@ class EmailNotesSidebar {
     statusElement.style.display = 'none';
   }
 
-  detectAndSetTextDirection(textarea) {
-    const text = textarea.value;
-    if (!text.trim()) {
-      // Reset to auto direction for empty text
-      textarea.style.direction = 'auto';
-      textarea.style.textAlign = 'start';
-      return;
-    }
-
-    // Check if text contains RTL characters
-    const rtlRegex = /[\u0590-\u05FF\u0600-\u06FF\u0750-\u077F\u08A0-\u08FF\uFB1D-\uFDFF\uFE70-\uFEFF]/;
-    const hasRtlChars = rtlRegex.test(text);
-    
-    // Get first meaningful character (skip spaces/punctuation)
-    const meaningfulText = text.trim().replace(/^[^\p{L}]+/u, '');
-    const firstChar = meaningfulText.charAt(0);
-    
-    if (hasRtlChars && rtlRegex.test(firstChar)) {
-      // Text starts with RTL character - set RTL direction
-      textarea.style.direction = 'rtl';
-      textarea.style.textAlign = 'right';
-    } else {
-      // Text starts with LTR character or no RTL chars - set LTR direction
-      textarea.style.direction = 'ltr';
-      textarea.style.textAlign = 'left';
-    }
-  }
-
-  handleFormattingShortcuts(e, textarea) {
-    const start = textarea.selectionStart;
-    const end = textarea.selectionEnd;
-    const selectedText = textarea.value.substring(start, end);
-    
-    // Handle Tab for bullet points
-    if (e.key === 'Tab') {
-      e.preventDefault();
-      const lineStart = textarea.value.lastIndexOf('\n', start - 1) + 1;
-      const currentLine = textarea.value.substring(lineStart, end);
+  detectAndSetTextDirection() {
+    try {
+      let text = '';
+      let rootElement = null;
       
-      if (e.shiftKey) {
-        // Shift+Tab: Remove indentation
-        if (currentLine.startsWith('  ')) {
-          this.replaceTextRange(textarea, lineStart, lineStart + 2, '');
-        }
+      if (this.quill && this.quill.getText && this.quill.root) {
+        text = this.quill.getText();
+        rootElement = this.quill.root;
+      } else if (this.fallbackEditor) {
+        text = this.fallbackEditor.value || '';
+        rootElement = this.fallbackEditor;
+      }
+      
+      if (!rootElement) return;
+      
+      if (!text.trim()) {
+        // Reset to auto direction for empty text
+        rootElement.style.direction = 'auto';
+        rootElement.style.textAlign = 'start';
+        return;
+      }
+
+      // Check if text contains RTL characters
+      const rtlRegex = /[\u0590-\u05FF\u0600-\u06FF\u0750-\u077F\u08A0-\u08FF\uFB1D-\uFDFF\uFE70-\uFEFF]/;
+      const hasRtlChars = rtlRegex.test(text);
+      
+      // Get first meaningful character (skip spaces/punctuation)
+      const meaningfulText = text.trim().replace(/^[^\p{L}]+/u, '');
+      const firstChar = meaningfulText.charAt(0);
+      
+      if (hasRtlChars && rtlRegex.test(firstChar)) {
+        // Text starts with RTL character - set RTL direction
+        rootElement.style.direction = 'rtl';
+        rootElement.style.textAlign = 'right';
       } else {
-        // Tab: Add indentation or bullet point
-        if (currentLine.trim() === '') {
-          this.insertTextAtCursor(textarea, '• ');
-        } else {
-          this.insertTextAtCursor(textarea, '  ');
-        }
+        // Text starts with LTR character or no RTL chars - set LTR direction
+        rootElement.style.direction = 'ltr';
+        rootElement.style.textAlign = 'left';
       }
-      return;
-    }
-
-    // Handle Enter for continuing lists
-    if (e.key === 'Enter') {
-      const lineStart = textarea.value.lastIndexOf('\n', start - 1) + 1;
-      const currentLine = textarea.value.substring(lineStart, start);
-      
-      // Auto-continue bullet points
-      if (currentLine.match(/^\s*[•\-\*]\s/)) {
-        e.preventDefault();
-        const indent = currentLine.match(/^\s*/)[0];
-        const bullet = currentLine.match(/[•\-\*]/)[0];
-        this.insertTextAtCursor(textarea, `\n${indent}${bullet} `);
-        return;
-      }
-      
-      // Auto-continue numbered lists
-      const numberMatch = currentLine.match(/^(\s*)(\d+)\.\s/);
-      if (numberMatch) {
-        e.preventDefault();
-        const indent = numberMatch[1];
-        const nextNumber = parseInt(numberMatch[2]) + 1;
-        this.insertTextAtCursor(textarea, `\n${indent}${nextNumber}. `);
-        return;
-      }
-    }
-
-    // Handle formatting shortcuts
-    if ((e.ctrlKey || e.metaKey) && selectedText) {
-      let replacement = null;
-      
-      switch (e.key.toLowerCase()) {
-        case 'b': // Bold
-          e.preventDefault();
-          replacement = `**${selectedText}**`;
-          break;
-        case 'u': // Underline
-          e.preventDefault();
-          replacement = `__${selectedText}__`;
-          break;
-        case 'i': // Italic (optional)
-          e.preventDefault();
-          replacement = `*${selectedText}*`;
-          break;
-      }
-      
-      if (replacement) {
-        this.replaceSelectedText(textarea, replacement);
-      }
+    } catch (error) {
+      console.error('Error in detectAndSetTextDirection:', error);
     }
   }
 
-  insertTextAtCursor(textarea, text) {
-    const start = textarea.selectionStart;
-    const end = textarea.selectionEnd;
-    const before = textarea.value.substring(0, start);
-    const after = textarea.value.substring(end);
-    
-    textarea.value = before + text + after;
-    textarea.selectionStart = textarea.selectionEnd = start + text.length;
-    
-    // Trigger input event for auto-save
-    textarea.dispatchEvent(new Event('input', { bubbles: true }));
-  }
 
-  replaceSelectedText(textarea, replacement) {
-    const start = textarea.selectionStart;
-    const end = textarea.selectionEnd;
-    const before = textarea.value.substring(0, start);
-    const after = textarea.value.substring(end);
-    
-    textarea.value = before + replacement + after;
-    textarea.selectionStart = start;
-    textarea.selectionEnd = start + replacement.length;
-    
-    // Trigger input event for auto-save
-    textarea.dispatchEvent(new Event('input', { bubbles: true }));
-  }
 
-  replaceTextRange(textarea, start, end, replacement) {
-    const before = textarea.value.substring(0, start);
-    const after = textarea.value.substring(end);
-    
-    textarea.value = before + replacement + after;
-    textarea.selectionStart = textarea.selectionEnd = start + replacement.length;
-    
-    // Trigger input event for auto-save
-    textarea.dispatchEvent(new Event('input', { bubbles: true }));
-  }
+
 
   // Auto-sync functionality
   async toggleAutoSync() {
@@ -1520,9 +1454,139 @@ class EmailNotesSidebar {
       console.error('Error loading auto-sync state:', error);
     }
   }
+
+  // Initialize Quill rich text editor
+  initQuillEditor() {
+    console.log('Initializing Quill editor...');
+    console.log('Window.Quill:', window.Quill);
+    
+    if (!window.Quill) {
+      console.error('Quill.js not loaded - falling back to simple textarea');
+      this.createFallbackEditor();
+      return;
+    }
+
+    const editorElement = document.getElementById('quillEditor');
+    if (!editorElement) {
+      console.error('Quill editor element not found');
+      this.createFallbackEditor();
+      return;
+    }
+
+    // Configure Quill modules - simplified for better compatibility
+    const modules = {
+      toolbar: [
+        ['bold', 'italic'],
+        ['link'],
+        [{ 'list': 'ordered'}, { 'list': 'bullet' }]
+      ]
+    };
+
+    const formats = [
+      'bold', 'italic', 'link', 'list'
+    ];
+
+    try {
+      // Initialize Quill v2
+      this.quill = new Quill('#quillEditor', {
+        theme: 'snow',
+        modules: modules,
+        formats: formats,
+        placeholder: 'Add your private notes for this email thread...'
+      });
+
+      // Set up event listeners with error handling  
+      this.quill.on('text-change', (delta, oldDelta, source) => {
+        try {
+          this.handleNotesInput();
+        } catch (error) {
+          console.error('Error in handleNotesInput:', error);
+        }
+      });
+
+      // Auto-detect RTL text direction
+      this.quill.on('text-change', () => {
+        try {
+          this.detectAndSetTextDirection();
+        } catch (error) {
+          console.error('Error in detectAndSetTextDirection:', error);
+        }
+      });
+
+      console.log('Quill v2 editor initialized successfully');
+    } catch (error) {
+      console.error('Failed to initialize Quill editor:', error);
+      this.createFallbackEditor();
+    }
+  }
+
+  createFallbackEditor() {
+    console.log('Creating fallback textarea editor');
+    const container = document.getElementById('quillEditor');
+    if (container) {
+      container.innerHTML = `
+        <textarea 
+          id="fallbackEditor" 
+          style="width: 100%; min-height: 350px; max-height: 60vh; 
+                 padding: 12px; border: 1px solid #dadce0; border-radius: 6px; 
+                 font-family: inherit; font-size: 15px; line-height: 1.5; 
+                 resize: vertical; outline: none; box-sizing: border-box;
+                 transition: border-color 0.2s;"
+          placeholder="Add your private notes for this email thread..."
+        ></textarea>
+      `;
+      
+      const fallbackEditor = document.getElementById('fallbackEditor');
+      
+      // Add event listeners properly
+      fallbackEditor.addEventListener('input', () => {
+        this.handleNotesInput();
+      });
+      
+      fallbackEditor.addEventListener('focus', () => {
+        fallbackEditor.style.borderColor = '#1a73e8';
+        fallbackEditor.style.boxShadow = '0 0 0 1px #1a73e8';
+      });
+      
+      fallbackEditor.addEventListener('blur', () => {
+        fallbackEditor.style.borderColor = '#dadce0';
+        fallbackEditor.style.boxShadow = 'none';
+      });
+      
+      // Store reference to fallback
+      this.fallbackEditor = fallbackEditor;
+    }
+  }
+
+
+
+
+
+
+
+
+  extractTextFromHtml(html) {
+    if (!html) return '';
+    
+    // Create a temporary div to parse HTML and extract text content
+    const tempDiv = document.createElement('div');
+    tempDiv.innerHTML = html;
+    
+    // Extract plain text content
+    const text = tempDiv.textContent || tempDiv.innerText || '';
+    
+    return text.trim();
+  }
 }
 
 // Initialize sidebar when DOM is loaded
 document.addEventListener('DOMContentLoaded', () => {
-  new EmailNotesSidebar();
+  console.log('Scripts loading...');
+  console.log('Quill available:', typeof window.Quill !== 'undefined');
+  
+  try {
+    new EmailNotesSidebar();
+  } catch (error) {
+    console.error('Failed to initialize EmailNotesSidebar:', error);
+  }
 });

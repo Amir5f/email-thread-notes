@@ -1,0 +1,35 @@
+{
+  "PostToolUse": [
+    {
+      "matcher": "Edit.*\\.(js|html|css)",
+      "hooks": [
+        {
+          "type": "agent",
+          "agent": "chrome-extension-architect",
+          "prompt": "Review the recent code changes for Chrome extension best practices and architectural decisions."
+        }
+      ]
+    },
+    {
+      "matcher": "Edit.*(todos\\.md|email_thread_notes_prd\\.md)",
+      "hooks": [
+        {
+          "type": "agent", 
+          "agent": "product-manager",
+          "prompt": "Validate documentation updates against current implementation state and ensure consistency."
+        }
+      ]
+    }
+  ],
+  "PreCommit": [
+    {
+      "hooks": [
+        {
+          "type": "agent",
+          "agent": "product-manager", 
+          "prompt": "Perform final feature completeness validation before commit, checking PRD compliance and cross-platform compatibility."
+        }
+      ]
+    }
+  ]
+}
