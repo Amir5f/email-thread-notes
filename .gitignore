@@ -1,0 +1,40 @@
+# Claude Code development files
+.claude/
+CLAUDE.local.md
+
+# Development documentation (too messy for public)
+email_thread_notes_prd.md
+todos.md
+todos_old_Aug18.md
+backlog.md
+CONTRIBUTING.md
+
+# Development/testing files
+SIDEBAR_TESTING.md
+
+# OS generated files
+.DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+ehthumbs.db
+Thumbs.db
+
+# IDE files
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# Temporary files
+*.tmp
+*.temp
+.cache/
+
+# Node modules (if you add any build tools later)
+node_modules/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*

@@ -1,5 +1,5 @@
-# Email Thread Notes - Development Todos
 
+# Email Thread Notes - Development Todos
 ## 🎉 Major Milestones Completed
 
 ### ✅ Chrome Side Panel Migration (v2.1.0) 
@@ -41,13 +41,11 @@
 - [x] **Re-introduce import/export functionality** - ✅ COMPLETED: Added settings panel with export/import buttons to sidebar
 - [x] **Add auto-sync controls to sidebar** - ✅ COMPLETED: Added toggle switch and frequency controls (1-60 min options)
 - [x] **Add UI indication for file location** - Help menu showing where files are saved
+- [ ] **Favorite note to top** - Pin important notes to the top of the list
 - [ ] **Re-introduce sync setup dialogue** - Help menu explaining cross-device sync setup
-- [ ] **Basic markdown rendering in input box** - Real-time markdown rendering in the textarea
 - [ ] **Capture account email properly** - Platform categorization isn't enough, need actual email
 - [ ] **Full-text search with highlighting** - Search across all notes with result highlighting
-- [ ] **Favorite note to top** - Pin important notes to the top of the list
-- [ ] **Archive overlay approach code** - Move old overlay files to archive directory
-- [ ] **Performance optimization** - Reduce memory footprint and improve responsiveness
+- [x] **Archive overlay approach code** - Move old overlay files to archive directory
 
 ---
 
@@ -55,12 +53,9 @@
 
 ### Enhanced Search & Productivity
 - [ ] **Advanced filtering** by platform, account, date range
-- [ ] **Export formats** - CSV, Markdown options
-- [ ] **Note templates** for common use cases
 
 ### Platform Enhancements  
 - [ ] **Gmail reading pane support** - Thread detection in single message view
-- [ ] **Visual thread indicators** - Show which conversations have notes
 - [ ] **Keyboard shortcuts** for common actions (save, toggle panel)
 
 ---
@@ -82,13 +77,7 @@
 ---
 
 ## 🔮 Visionary Goals
-
-1. **Universal Email Assistant** - Support for additional email platforms (Yahoo, Proton)
-2. **AI-Powered Insights** - Automatic thread analysis and action recommendations  
-3. **Team Collaboration** - Shared notes and team-specific storage options
-4. **Mobile Experience** - Progressive web app for mobile email management
-5. **Enterprise Integration** - Corporate security compliance and admin controls
-
+1. **AI-Powered Insights** - Automatic thread analysis and action recommendations  
 ---
 
 ## 📊 Current Status
@@ -100,4 +89,4 @@
 **Architecture**: Chrome Side Panel API with simplified content scripts  
 **Platforms**: Gmail and Outlook web clients  
 **Storage**: Local Chrome storage with optional cloud sync  
-**Languages**: Full RTL support (Hebrew, Arabic, etc.)
+**Languages**: Full RTL support (Hebrew, etc.)

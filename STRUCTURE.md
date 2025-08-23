@@ -21,22 +21,13 @@ Email Thread Notes/
 │   └── outlook-sidebar.js        # Outlook content script (thread detection)
 │
 ├── 📂 lib/                       # 📚 EXTERNAL LIBRARIES
-│   ├── snarkdown.min.js          # Markdown parser (~1KB)
-│   └── dompurify.min.js          # XSS sanitizer (~21KB)
+│   ├── quill.min.js              # Rich text editor (~400KB)
+│   ├── quill.core.css            # Quill core styles
+│   └── quill.snow.css            # Quill Snow theme styles
 │
 ├── 📂 assets/                    # 🎨 STATIC RESOURCES
-│   ├── icons/                    # Extension icons (64x64, 48x48, 128x128)
-│   └── styles/                   # CSS files (gmail.css, outlook.css)
+│   └── icons/                    # Extension icons (64x64, 48x48, 128x128)
 │
-└── 📂 archive/                   # 🗄️ ARCHIVED CODE
-    ├── overlay-approach/         # Old overlay implementation (v1.x)
-    │   ├── background.js         # Old background script
-    │   ├── gmail.js              # Old Gmail overlay implementation
-    │   ├── outlook.js            # Old Outlook overlay implementation
-    │   ├── gmail-simple.js       # Simple Gmail implementation
-    │   ├── popup.html/js         # Old popup interface
-    │   └── manifest-overlay.json # Old Manifest V3 configuration
-    └── test.html                 # Testing file
 ```
 
 ## 🏗️ Architecture Overview
@@ -51,8 +42,9 @@ Email Thread Notes/
 manifest.json
 ├── src/background.js           (service worker)
 ├── src/sidebar.html            (main UI)
-│   ├── ../lib/snarkdown.min.js     (markdown parsing)
-│   ├── ../lib/dompurify.min.js     (XSS protection)
+│   ├── ../lib/quill.min.js         (rich text editor)
+│   ├── ../lib/quill.core.css       (editor styles)
+│   ├── ../lib/quill.snow.css       (theme styles)
 │   └── sidebar.js              (UI logic)
 ├── src/gmail-sidebar.js        (Gmail thread detection)
 └── src/outlook-sidebar.js      (Outlook thread detection)
@@ -68,33 +60,28 @@ manifest.json
 2. **Security First**
    - Local libraries (no CDN dependencies)
    - Strict Content Security Policy
-   - DOMPurify for safe HTML rendering
+   - Trusted rich text editor (Quill.js)
 
 3. **Performance Optimized**
    - Minimal content script footprint
-   - Lightweight libraries (Snarkdown ~1KB)
+   - Rich text editing with Quill.js
    - Efficient DOM manipulation
 
 4. **Maintainable Structure**
    - Clear file organization
-   - Archived legacy code
    - Documented architecture
+   - Modern Chrome extension patterns
 
 ## 📝 Development Notes
 
 - **Active development**: `src/` directory
 - **Dependencies**: `lib/` directory (local copies)
 - **Resources**: `assets/` directory
-- **Legacy code**: `archive/` directory (preserved for reference)
 
-## 🔄 Migration from Overlay Architecture
+## 🔄 Chrome Side Panel Architecture
 
-The overlay approach (archived) used:
-- Direct DOM injection into Gmail/Outlook
-- Complex positioning and styling
-- Multiple content scripts with UI logic
-
-The current Side Panel approach:
-- Uses Chrome's native Side Panel API
-- Cleaner content scripts (detection only)
-- Better user experience and maintainability
+The current implementation uses:
+- Chrome's native Side Panel API
+- Content scripts for thread detection only
+- Rich text editing with Quill.js
+- Clean separation between UI and detection logic

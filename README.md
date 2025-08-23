@@ -1,16 +1,15 @@
 # Email Thread Notes - Chrome Extension
 
-A privacy-focused Chrome extension that allows users to attach private, persistent notes to email threads in Gmail (with Outlook support coming in Phase 2).
+A privacy-focused Chrome extension that allows users to attach private, persistent notes to email threads in Gmail using Chrome's Side Panel API.
 
-## Phase 1 Status: ✅ COMPLETED
+## ✨ Features
 
-**Current Features (Gmail only):**
-- ✅ Gmail thread detection
-- ✅ Private notes storage (local only)
-- ✅ Auto-save functionality
-- ✅ Visual indicators for threads with notes
-- ✅ Keyboard shortcuts (Ctrl/Cmd+Shift+N)
-- ✅ Notes button in Gmail toolbar
+- **Gmail Integration**: Add private notes to Gmail conversations (conversation view only)
+- **Side Panel Interface**: Clean, persistent sidebar that doesn't interfere with Gmail
+- **Privacy-First**: All data stored locally in your browser
+- **Auto-Save**: Notes automatically save as you type
+- **Thread Detection**: Automatically identifies email conversations
+- **Cross-Session Persistence**: Notes persist across browser restarts
 
 ## Installation (Development Mode)
 
@@ -22,74 +21,26 @@ A privacy-focused Chrome extension that allows users to attach private, persiste
 
 ## Usage
 
-### Gmail
-1. Navigate to Gmail and open any email conversation
-2. Click the "📝 Notes" button in Gmail's toolbar, or
-3. Use keyboard shortcut: `Ctrl+Shift+N` (Windows) or `Cmd+Shift+N` (Mac)
-4. Type your notes in the panel that appears
-5. Notes auto-save after 1 second of inactivity
-6. Close panel with the X button or by clicking outside
+1. **Open Gmail** and navigate to any email conversation (conversation view)
+2. **Open Side Panel**: Click the Chrome extension icon or use the side panel
+3. **Add Notes**: Type your notes in the text area - they save automatically
+4. **Switch Conversations**: Notes are automatically associated with each thread
 
-### Features
-- **Auto-save**: Notes save automatically 1 second after you stop typing
-- **Persistence**: Notes persist across browser sessions and Gmail navigation
-- **Visual indicators**: Threads with notes show a small indicator
-- **Privacy-first**: All data stored locally in your browser
-- **Non-intrusive**: Panel appears only when needed
+### ⚠️ Current Limitations
+- **Gmail Only**: Works in Gmail conversation view (reading pane not supported)
+- **Outlook**: Experimental support - may be unreliable
+- **Thread Detection**: Requires full conversation view to properly identify threads
 
-## File Structure
+## Project Structure
 
-```
-Email Thread Notes/
-├── manifest.json              # Extension configuration
-├── background.js              # Storage management and message handling
-├── popup.html                 # Extension popup UI
-├── popup.js                   # Popup functionality
-├── content-scripts/
-│   ├── gmail.js              # Gmail thread detection and UI
-│   └── outlook.js            # Placeholder for Phase 2
-├── styles/
-│   ├── gmail.css             # Gmail-specific styling
-│   └── outlook.css           # Placeholder for Phase 2
-├── icons/                    # Extension icons (placeholder)
-├── test.html                 # Development testing guide
-└── README.md                 # This file
-```
-
-## Development Roadmap
-
-### ✅ Phase 1: Gmail Foundation (COMPLETED)
-- Basic Chrome extension structure
-- Gmail thread detection
-- Local storage implementation  
-- Notes UI for Gmail
-- Auto-save and visual indicators
-
-### 🔄 Phase 2: Outlook Integration (Next)
-- Outlook web thread detection
-- Cross-platform storage consistency
-- UI adaptations for Outlook
-
-### 📋 Phase 3: Enhanced Features
-- Advanced UI features (search, indicators)
-- Data export/import functionality
-- Settings and preferences
-
-### ☁️ Phase 4: Cloud Storage Integration
-- Optional cloud storage providers
-- Platform-specific storage preferences
-- Sync conflict resolution
-
-### 🔧 Phase 5: Polish & Testing
-- Comprehensive testing
-- Performance optimization
-- Documentation
+See [STRUCTURE.md](STRUCTURE.md) for detailed project organization and architecture documentation.
 
 ## Technical Details
 
-- **Manifest Version**: 3 (latest Chrome extension format)
+- **Architecture**: Chrome Side Panel API with content scripts for thread detection
+- **Manifest Version**: 3
 - **Storage**: Chrome storage API (local storage)
-- **Permissions**: `storage`, `activeTab`
+- **Permissions**: `storage`, `activeTab`, `scripting`, `sidePanel`
 - **Host Permissions**: Gmail and Outlook web domains
 - **Browser Support**: Chrome 88+, Chromium-based Edge
 
@@ -100,13 +51,17 @@ Email Thread Notes/
 - No tracking or analytics
 - Privacy-first design philosophy
 
+### Optional Cloud Sync
+
+For syncing notes across devices, see [CLOUD_SYNC_SETUP.md](CLOUD_SYNC_SETUP.md) for instructions on setting up iCloud Drive or other cloud storage integration.
+
 ## Troubleshooting
 
-- **Panel doesn't appear**: Check browser console for errors, ensure Gmail is fully loaded
+- **Side panel doesn't open**: Ensure extension is enabled and Gmail is fully loaded
 - **Notes don't save**: Check extension permissions and storage quota
-- **Button missing**: Try refreshing Gmail, button placement may vary with Gmail updates
-- **Thread detection issues**: Try switching between conversations to trigger detection
+- **Thread detection issues**: Make sure you're in Gmail conversation view (not reading pane)
+- **Outlook issues**: Outlook support is experimental... 
 
 ## License
 
-This project is developed as part of a Product Requirements Document implementation.
+MIT License - see LICENSE file for details.
