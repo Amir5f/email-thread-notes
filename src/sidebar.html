@@ -3,119 +3,150 @@
 <head>
   <meta charset="utf-8">
   <title>Email Thread Notes</title>
+  <!-- Milkdown Theme -->
+  <link rel="stylesheet" href="../lib/milkdown/theme-nord/lib/style.css">
   <style>
-    body {
+    * {
+      box-sizing: border-box;
       margin: 0;
       padding: 0;
+    }
+
+    body {
       font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Arial, sans-serif;
       font-size: 15px;
       background: #ffffff;
       height: 100vh;
       display: flex;
       flex-direction: column;
+      overflow: hidden;
     }
 
+    /* Header */
     .sidebar-header {
-      background: #f8f9fa;
-      border-bottom: 1px solid #dadce0;
-      padding: 16px;
+      padding: 20px;
+      border-bottom: 1px solid #f3f4f6;
+      background: white;
       flex-shrink: 0;
+      animation: slideDown 0.4s ease;
     }
 
-    .sidebar-title {
-      font-size: 16px;
-      font-weight: 500;
-      color: #202124;
-      margin: 0 0 8px 0;
-      display: flex;
-      align-items: center;
-      gap: 8px;
+    @keyframes slideDown {
+      from {
+        opacity: 0;
+        transform: translateY(-10px);
+      }
+      to {
+        opacity: 1;
+        transform: translateY(0);
+      }
     }
 
     .header-top {
       display: flex;
       justify-content: space-between;
       align-items: center;
-      margin-bottom: 12px;
-      width: 100%;
+      margin-bottom: 16px;
     }
 
-    .platform-indicator {
-      font-size: 13px;
-      font-weight: 500;
-      color: #5f6368;
-      background: #e8f0fe;
-      padding: 6px 12px;
-      border-radius: 12px;
-      display: none;
-      text-align: center;
+    .sidebar-title {
+      font-size: 18px;
+      font-weight: 600;
+      color: #111827;
     }
 
-    .settings-toggle {
-      background: none;
-      border: none;
-      font-size: 16px;
+    .settings-icon {
+      width: 36px;
+      height: 36px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      border-radius: 8px;
       cursor: pointer;
-      padding: 6px;
-      border-radius: 4px;
-      transition: background-color 0.2s;
-      color: #5f6368;
+      transition: all 0.2s ease;
+      color: #6b7280;
+      background: transparent;
+      border: none;
     }
 
-    .settings-toggle:hover {
-      background-color: #f1f3f4;
+    .settings-icon:hover {
+      background: #f3f4f6;
     }
 
-    .settings-toggle.active {
-      background-color: #e8f0fe;
-      color: #1a73e8;
+    .settings-icon:active {
+      transform: scale(0.95);
     }
 
+    .settings-icon.active .icon {
+      transform: rotate(180deg);
+    }
+
+    .settings-icon .icon {
+      transition: transform 0.3s ease;
+    }
+
+    .icon {
+      width: 20px;
+      height: 20px;
+      stroke: currentColor;
+      fill: none;
+      stroke-width: 2;
+      stroke-linecap: round;
+      stroke-linejoin: round;
+    }
 
     .button-row {
       display: flex;
-      gap: 8px;
-      margin-top: 12px;
+      gap: 4px;
     }
 
     .sidebar-btn {
       flex: 1;
-      padding: 8px 12px;
-      min-width: 0;
-      white-space: nowrap;
-      overflow: hidden;
-      text-overflow: ellipsis;
-      border: 1px solid #dadce0;
-      border-radius: 6px;
-      background: #ffffff;
-      color: #5f6368;
-      font-size: 13px;
+      padding: 10px 16px;
+      border: none;
+      background: none;
+      color: #6b7280;
+      font-size: 14px;
+      font-weight: 500;
       cursor: pointer;
-      transition: all 0.2s;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      gap: 6px;
+      border-radius: 8px;
+      transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+      position: relative;
     }
 
-    .sidebar-btn:hover {
-      background: #f8f9fa;
-      border-color: #9aa0a6;
+    .sidebar-btn::before {
+      content: '';
+      position: absolute;
+      bottom: 0;
+      left: 0;
+      right: 0;
+      height: 2px;
+      background: #6366f1;
+      transform: scaleX(0);
+      transition: transform 0.3s ease;
+    }
+
+    .sidebar-btn:hover:not(:disabled) {
+      background: #f9fafb;
+      color: #374151;
+      transform: translateY(-1px);
     }
 
     .sidebar-btn.active {
-      background: #1a73e8;
-      color: #ffffff;
-      border-color: #1a73e8;
+      color: #6366f1;
+      background: #eef2ff;
+    }
+
+    .sidebar-btn.active::before {
+      transform: scaleX(1);
     }
 
     .sidebar-btn:disabled {
-      background: #f1f3f4;
-      color: #9aa0a6;
       cursor: not-allowed;
-      border-color: #e8eaed;
+      opacity: 0.5;
     }
 
+    /* Content */
     .sidebar-content {
       flex: 1;
       display: flex;
@@ -127,267 +158,347 @@
       flex: 1;
       display: none;
       flex-direction: column;
-      padding: 16px;
+      padding: 20px;
+      animation: fadeIn 0.5s ease 0.1s both;
     }
 
     .content-view.active {
       display: flex;
     }
 
-    .loading-state {
-      display: flex;
-      flex-direction: column;
-      align-items: center;
-      justify-content: center;
-      height: 200px;
-      color: #5f6368;
-      text-align: center;
+    @keyframes fadeIn {
+      from {
+        opacity: 0;
+        transform: translateY(10px);
+      }
+      to {
+        opacity: 1;
+        transform: translateY(0);
+      }
     }
 
-    .loading-spinner {
-      width: 24px;
-      height: 24px;
-      border: 2px solid #e8eaed;
-      border-top: 2px solid #1a73e8;
-      border-radius: 50%;
-      animation: spin 1s linear infinite;
-      margin-bottom: 12px;
-    }
-
-    @keyframes spin {
-      0% { transform: rotate(0deg); }
-      100% { transform: rotate(360deg); }
-    }
-
+    /* Thread Info */
     .thread-info {
-      background: #f8f9fa;
-      border: 1px solid #e8eaed;
-      border-radius: 6px;
-      padding: 12px;
-      margin-bottom: 16px;
-      font-size: 12px;
+      background: linear-gradient(135deg, #f9fafb 0%, #f3f4f6 100%);
+      padding: 14px 16px;
+      border-radius: 10px;
+      margin-bottom: 20px;
+      border-left: 3px solid #6366f1;
+      transition: all 0.3s ease;
+      cursor: pointer;
+      display: none;
+    }
+
+    .thread-info:hover {
+      transform: translateX(2px);
+      box-shadow: 0 2px 8px rgba(99, 102, 241, 0.1);
+    }
+
+    .thread-info-header {
+      display: flex;
+      align-items: center;
+      gap: 10px;
     }
 
     .thread-subject {
-      font-weight: 500;
-      color: #202124;
+      font-size: 14px;
+      font-weight: 600;
+      color: #111827;
       margin-bottom: 4px;
-    }
-
-    .thread-details {
-      color: #5f6368;
-    }
-
-
-    /* Quill Editor Customization */
-    .ql-toolbar {
-      border: 1px solid #dadce0 !important;
-      border-bottom: none !important;
-      border-radius: 6px 6px 0 0 !important;
-      background: #f8f9fa;
-    }
-    
-    .ql-container {
-      border: 1px solid #dadce0 !important;
-      border-radius: 0 0 6px 6px !important;
-      font-family: inherit !important;
-      font-size: 15px !important;
-    }
-    
-    .ql-editor {
-      min-height: 320px;
-      padding: 12px !important;
-      line-height: 1.5 !important;
-    }
-    
-    .ql-editor.ql-blank::before {
-      content: 'Add your private notes for this email thread...' !important;
-      color: #9aa0a6 !important;
-      font-style: normal !important;
-    }
-    
-    /* Focus styling */
-    .ql-container.ql-snow {
-      transition: border-color 0.2s;
-    }
-    
-    .ql-editor:focus {
-      outline: none;
-    }
-    
-    /* Ensure Quill toolbar buttons match our design */
-    .ql-toolbar .ql-formats {
-      margin-right: 8px;
-    }
-    
-    .ql-toolbar button:hover {
-      color: #1a73e8 !important;
-    }
-    
-    .ql-toolbar button.ql-active {
-      color: #1a73e8 !important;
-    }
-
-    .notes-footer {
-      margin-top: 12px;
-      display: flex;
-      justify-content: space-between;
-      align-items: center;
-      font-size: 12px;
-      color: #5f6368;
-    }
-
-    .notes-actions {
       display: flex;
       align-items: center;
       gap: 8px;
     }
 
-    .save-btn, .delete-btn {
-      background: none;
-      border: none;
-      font-size: 14px;
+    .mail-icon {
+      width: 16px;
+      height: 16px;
+      color: #6366f1;
+    }
+
+    .thread-details {
+      font-size: 12px;
+      color: #6b7280;
+    }
+
+    .thread-open-btn {
+      margin-left: auto;
+      border: 1px solid #d1d5db;
+      background: #ffffff;
+      color: #4f46e5;
+      padding: 6px 10px;
+      border-radius: 8px;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      font-size: 12px;
+      font-weight: 500;
       cursor: pointer;
-      color: #5f6368;
-      padding: 4px 6px;
+      transition: all 0.2s ease;
+    }
+
+    .thread-open-btn:hover {
+      border-color: #4f46e5;
+      background: #eef2ff;
+      color: #312e81;
+    }
+
+    .thread-open-btn:disabled {
+      opacity: 0.6;
+      cursor: not-allowed;
+      border-color: #e3e5eb;
+      background: #f5f6f8;
+      color: #9ca3af;
+    }
+
+    .thread-open-icon {
+      width: 14px;
+      height: 14px;
+      stroke-width: 1.6;
+    }
+
+    /* Editor */
+    #quillEditor {
+      flex: 1;
+      padding: 12px 14px;
+      border-radius: 12px;
+      background: #ffffff;
+      border: 1px solid transparent;
+      transition: border-color 0.2s ease, box-shadow 0.2s ease;
+      animation: fadeIn 0.6s ease 0.2s both;
+      overflow-y: auto;
+    }
+
+    #quillEditor:focus-within {
+      border-color: #c4c6f5;
+      box-shadow: 0 0 0 1px #c4c6f5;
+    }
+
+    #quillEditor.editor-empty {
+      border: 1px dashed #d4d8e3;
+      background: #fcfdff;
+    }
+
+    .milkdown {
+      outline: none !important;
+      min-height: 300px;
+    }
+
+    /* Milkdown custom styles */
+    .milkdown h1 {
+      font-size: 24px;
+      font-weight: 600;
+      color: #111827;
+      margin: 0 0 16px 0;
+      line-height: 1.3;
+    }
+
+    .milkdown h2 {
+      font-size: 20px;
+      font-weight: 600;
+      color: #374151;
+      margin: 24px 0 12px 0;
+      line-height: 1.3;
+    }
+
+    .milkdown h3 {
+      font-size: 18px;
+      font-weight: 600;
+      color: #374151;
+      margin: 20px 0 10px 0;
+    }
+
+    .milkdown p {
+      font-size: 15px;
+      line-height: 1.6;
+      color: #374151;
+      margin: 0 0 12px 0;
+    }
+
+    .milkdown ul, .milkdown ol {
+      margin: 0 0 16px 0;
+      padding-left: 24px;
+    }
+
+    .milkdown li {
+      font-size: 15px;
+      line-height: 1.6;
+      color: #374151;
+      margin: 4px 0;
+    }
+
+    .milkdown strong {
+      font-weight: 600;
+      color: #111827;
+    }
+
+    .milkdown code {
+      background: #f3f4f6;
+      padding: 2px 6px;
       border-radius: 4px;
-      transition: all 0.2s;
+      font-family: 'SF Mono', Monaco, Consolas, monospace;
+      font-size: 14px;
+      color: #6366f1;
     }
 
-    .save-btn:hover {
-      background-color: #e8f5e8;
-      color: #34a853;
+    .milkdown pre {
+      background: #1f2937;
+      color: #f9fafb;
+      padding: 16px;
+      border-radius: 8px;
+      overflow-x: auto;
+      margin: 16px 0;
     }
 
-    .delete-btn:hover {
-      background-color: #fee2e2;
-      color: #dc2626;
+    .milkdown pre code {
+      background: none;
+      color: #f9fafb;
+      padding: 0;
+    }
+
+    .milkdown blockquote {
+      border-left: 3px solid #6366f1;
+      padding-left: 16px;
+      margin: 16px 0;
+      color: #6b7280;
+      font-style: italic;
+    }
+
+    /* Footer */
+    .notes-footer {
+      padding: 16px 20px 20px 20px;
+      border-top: 1px solid #f3f4f6;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      animation: slideUp 0.4s ease 0.3s both;
+    }
+
+    @keyframes slideUp {
+      from {
+        opacity: 0;
+        transform: translateY(10px);
+      }
+      to {
+        opacity: 1;
+        transform: translateY(0);
+      }
     }
 
     .save-status {
       display: flex;
       align-items: center;
-      gap: 6px;
+      gap: 8px;
+      font-size: 13px;
+      color: #6b7280;
     }
 
     .status-indicator {
-      width: 8px;
-      height: 8px;
+      width: 6px;
+      height: 6px;
       border-radius: 50%;
-      background: #9aa0a6;
+      background: #9ca3af;
     }
 
     .status-indicator.ready {
-      background: #9aa0a6;
+      background: #9ca3af;
     }
 
     .status-indicator.typing {
-      background: #fbbc04;
+      background: #f59e0b;
+      animation: pulse 2s ease-in-out infinite;
     }
 
     .status-indicator.saving {
-      background: #1a73e8;
+      background: #3b82f6;
+      animation: pulse 2s ease-in-out infinite;
     }
 
     .status-indicator.saved {
-      background: #34a853;
+      background: #10b981;
+      animation: pulse 2s ease-in-out infinite;
     }
 
     .status-indicator.error {
-      background: #ea4335;
+      background: #ef4444;
     }
 
-    .empty-state {
+    @keyframes pulse {
+      0%, 100% {
+        opacity: 1;
+        transform: scale(1);
+      }
+      50% {
+        opacity: 0.7;
+        transform: scale(1.15);
+      }
+    }
+
+    .notes-actions {
       display: flex;
-      flex-direction: column;
+      gap: 6px;
+      align-items: center;
+    }
+
+    .icon-btn {
+      width: 36px;
+      height: 36px;
+      border: none;
+      background: transparent;
+      cursor: pointer;
+      border-radius: 8px;
+      display: flex;
       align-items: center;
       justify-content: center;
-      height: 200px;
-      color: #5f6368;
-      text-align: center;
+      color: #6b7280;
+      transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+      position: relative;
     }
 
-    .empty-icon {
-      font-size: 48px;
-      margin-bottom: 16px;
-      opacity: 0.6;
+    .icon-btn:hover {
+      background: #f3f4f6;
+      color: #374151;
+      transform: translateY(-2px);
     }
 
-    .empty-title {
-      font-size: 14px;
-      font-weight: 500;
-      margin-bottom: 8px;
+    .icon-btn:active {
+      transform: translateY(0) scale(0.95);
     }
 
-    .empty-description {
+    .icon-btn.save-btn:hover {
+      color: #10b981;
+      background: #f0fdf4;
+    }
+
+    .icon-btn.delete-btn:hover {
+      color: #ef4444;
+      background: #fef2f2;
+    }
+
+    #lastUpdated {
       font-size: 12px;
-      line-height: 1.4;
-      max-width: 280px;
+      color: #9ca3af;
     }
 
-    .search-section {
-      padding: 12px 16px;
-      border-bottom: 1px solid #e8eaed;
-      background: #f8f9fa;
-      flex-shrink: 0;
-    }
-
-    .search-input {
-      width: 100%;
-      padding: 8px 12px;
-      border: 1px solid #dadce0;
-      border-radius: 6px;
-      font-size: 13px;
-      outline: none;
-      margin-bottom: 8px;
-      box-sizing: border-box;
-      text-align: center;
-    }
-
-    .search-input:focus {
-      border-color: #1a73e8;
-      box-shadow: 0 0 0 1px #1a73e8;
-    }
-
-    .filter-options {
-      display: flex;
-      gap: 8px;
-    }
-
-    .filter-select {
-      flex: 1;
-      padding: 4px 8px;
-      border: 1px solid #dadce0;
-      border-radius: 4px;
-      font-size: 11px;
-      background: white;
-      outline: none;
-    }
-
-    .filter-select:focus {
-      border-color: #1a73e8;
-    }
-
-    .notes-content {
-      flex: 1;
-      overflow: hidden;
-      display: flex;
-      flex-direction: column;
-    }
-
-    /* Settings Panel Styles */
+    /* Settings Panel */
     .sidebar-settings {
       background: #f8f9fa;
-      border-bottom: 1px solid #dadce0;
-      padding: 16px;
+      border-bottom: 1px solid #e5e7eb;
+      padding: 20px;
       flex-shrink: 0;
+      display: none;
+    }
+
+    .sidebar-settings.active {
+      display: block;
+      animation: slideDown 0.3s ease;
     }
 
     .settings-header h4 {
       margin: 0 0 16px 0;
-      font-size: 14px;
-      font-weight: 500;
-      color: #202124;
+      font-size: 16px;
+      font-weight: 600;
+      color: #111827;
     }
 
     .settings-section {
@@ -400,15 +511,15 @@
 
     .settings-btn {
       width: 100%;
-      padding: 10px 16px;
-      border: 1px solid #dadce0;
-      border-radius: 6px;
+      padding: 12px 16px;
+      border: 1px solid #e5e7eb;
+      border-radius: 8px;
       background: #ffffff;
-      color: #5f6368;
-      font-size: 13px;
+      color: #6b7280;
+      font-size: 14px;
       font-weight: 500;
       cursor: pointer;
-      transition: all 0.2s;
+      transition: all 0.2s ease;
       display: flex;
       align-items: center;
       justify-content: center;
@@ -416,251 +527,336 @@
     }
 
     .settings-btn:hover {
-      background: #f8f9fa;
-      border-color: #9aa0a6;
+      background: #f9fafb;
+      border-color: #9ca3af;
+      transform: translateY(-1px);
     }
 
     .export-btn:hover {
-      background: #e8f5e8;
-      border-color: #34a853;
-      color: #34a853;
+      background: #f0fdf4;
+      border-color: #10b981;
+      color: #10b981;
     }
 
     .import-btn:hover {
-      background: #e8f0fe;
-      border-color: #1a73e8;
-      color: #1a73e8;
+      background: #eff6ff;
+      border-color: #3b82f6;
+      color: #3b82f6;
     }
 
     .help-text {
-      font-size: 11px;
-      color: #5f6368;
+      font-size: 12px;
+      color: #6b7280;
       margin-top: 6px;
       line-height: 1.4;
     }
 
     .file-location {
-      background: #fff3cd;
-      border: 1px solid #ffeaa7;
-      border-radius: 6px;
+      background: #fffbeb;
+      border: 1px solid #fef3c7;
+      border-radius: 8px;
       padding: 12px;
     }
 
     .file-location .help-text {
-      color: #856404;
+      color: #92400e;
       margin-top: 0;
     }
 
-    .file-location code {
-      background: rgba(0,0,0,0.1);
-      padding: 2px 4px;
-      border-radius: 3px;
-      font-family: 'Courier New', monospace;
-      font-size: 10px;
-      word-break: break-all;
-    }
-
     .settings-status {
-      padding: 8px 12px;
-      border-radius: 6px;
-      font-size: 12px;
+      padding: 10px 14px;
+      border-radius: 8px;
+      font-size: 13px;
       font-weight: 500;
       margin-top: 12px;
+      display: none;
     }
 
     .settings-status.success {
-      background: #e8f5e8;
-      color: #34a853;
-      border: 1px solid #34a853;
+      background: #f0fdf4;
+      color: #10b981;
+      border: 1px solid #10b981;
+      display: block;
     }
 
     .settings-status.error {
-      background: #fee2e2;
-      color: #dc2626;
-      border: 1px solid #dc2626;
+      background: #fef2f2;
+      color: #ef4444;
+      border: 1px solid #ef4444;
+      display: block;
     }
 
-    .settings-status.info {
-      background: #e8f0fe;
-      color: #1a73e8;
-      border: 1px solid #1a73e8;
-    }
-
-    /* Auto-Sync Toggle Styles */
-    .sync-header {
-      display: flex;
-      justify-content: space-between;
-      align-items: center;
-      margin-bottom: 12px;
-      font-size: 14px;
-      font-weight: 500;
-      color: #202124;
-    }
-
-    .sync-toggle {
-      width: 32px;
-      height: 18px;
-      background: #dadce0;
-      border-radius: 9px;
-      position: relative;
-      cursor: pointer;
-      transition: background 0.3s ease;
+    /* Search Section */
+    .search-section {
+      padding: 10px 16px;
+      border-bottom: 1px solid #f3f4f6;
+      background: #ffffff;
       flex-shrink: 0;
+      display: flex;
+      gap: 8px;
+      align-items: center;
+      flex-wrap: wrap;
     }
 
-    .sync-toggle.active {
-      background: #1a73e8;
+    .search-input {
+      flex: 1 1 60%;
+      min-width: 160px;
+      padding: 9px 12px;
+      border: 1px solid #e5e7eb;
+      border-radius: 8px;
+      font-size: 14px;
+      outline: none;
+      margin-bottom: 0;
+      transition: all 0.2s ease;
     }
 
-    .sync-toggle-slider {
+    .search-input:focus {
+      border-color: #6366f1;
+      box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.1);
+    }
+
+    .filter-options {
+      display: flex;
+      gap: 6px;
+      flex: 0 1 140px;
+    }
+
+    .filter-select {
+      width: 100%;
+      padding: 9px 10px;
+      border: 1px solid #e5e7eb;
+      border-radius: 6px;
+      font-size: 13px;
+      background: white;
+      outline: none;
+      cursor: pointer;
+      transition: all 0.2s ease;
+    }
+
+    .filter-select:focus {
+      border-color: #6366f1;
+    }
+
+    .new-note-btn {
+      flex: 0 0 auto;
+      padding: 8px 14px;
+      border-radius: 8px;
+      border: 1px solid #e0e7ff;
+      background: #eef2ff;
+      color: #4f46e5;
+      font-size: 13px;
+      font-weight: 600;
+      display: none;
+      align-items: center;
+      gap: 6px;
+      cursor: pointer;
+      transition: all 0.2s ease;
+    }
+
+    .new-note-btn.visible {
+      display: inline-flex;
+    }
+
+    .new-note-btn:hover {
+      background: #e0e7ff;
+      border-color: #c7d2fe;
+      color: #3730a3;
+    }
+
+    .new-note-btn svg {
       width: 14px;
       height: 14px;
+      stroke: currentColor;
+      stroke-width: 1.6;
+      fill: none;
+    }
+
+    /* Notes Content */
+    .notes-content {
+      flex: 1;
+      padding: 12px 16px 16px;
+      overflow: hidden;
       background: #ffffff;
-      border-radius: 50%;
-      position: absolute;
-      top: 2px;
-      left: 2px;
-      transition: transform 0.3s ease;
-      box-shadow: 0 1px 2px rgba(0,0,0,0.2);
     }
 
-    .sync-toggle.active .sync-toggle-slider {
-      transform: translateX(14px);
-    }
-
-    /* Sync Settings Styles */
-    .sync-settings {
-      margin-bottom: 8px;
-    }
-
-    .sync-option {
+    /* Loading/Empty States */
+    .loading-state {
       display: flex;
+      flex-direction: column;
       align-items: center;
-      gap: 8px;
+      justify-content: center;
+      height: 200px;
+      color: #6b7280;
+      text-align: center;
+    }
+
+    .loading-spinner {
+      width: 24px;
+      height: 24px;
+      border: 2px solid #f3f4f6;
+      border-top: 2px solid #6366f1;
+      border-radius: 50%;
+      animation: spin 1s linear infinite;
+      margin-bottom: 12px;
+    }
+
+    @keyframes spin {
+      0% { transform: rotate(0deg); }
+      100% { transform: rotate(360deg); }
+    }
+
+    .empty-state {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      height: 300px;
+      color: #6b7280;
+      text-align: center;
+      padding: 20px;
+    }
+
+    .empty-icon {
+      font-size: 48px;
+      margin-bottom: 16px;
+      opacity: 0.6;
+    }
+
+    .empty-title {
+      font-size: 16px;
+      font-weight: 600;
+      color: #374151;
       margin-bottom: 8px;
     }
 
-    .sync-option label {
-      font-size: 12px;
-      color: #5f6368;
-      min-width: 80px;
+    .empty-description {
+      font-size: 14px;
+      line-height: 1.5;
+      max-width: 300px;
+      color: #6b7280;
     }
 
-    .sync-select {
-      padding: 6px 8px;
-      border: 1px solid #dadce0;
+    /* Scrollbar */
+    ::-webkit-scrollbar {
+      width: 8px;
+    }
+
+    ::-webkit-scrollbar-track {
+      background: #f9fafb;
+    }
+
+    ::-webkit-scrollbar-thumb {
+      background: #d1d5db;
       border-radius: 4px;
-      background: #ffffff;
-      color: #202124;
-      font-size: 12px;
-      cursor: pointer;
-      outline: none;
     }
 
-    .sync-select:focus {
-      border-color: #1a73e8;
-      box-shadow: 0 0 0 2px rgba(26, 115, 232, 0.2);
+    ::-webkit-scrollbar-thumb:hover {
+      background: #9ca3af;
     }
   </style>
-  <!-- Quill.js CSS -->
-  <link rel="stylesheet" href="../lib/quill.core.css">
-  <link rel="stylesheet" href="../lib/quill.snow.css">
 </head>
 <body>
   <div class="sidebar-header">
     <div class="header-top">
-      <div class="platform-indicator" id="platformIndicator">Gmail</div>
-      <button class="settings-toggle" id="settingsToggle" title="Settings & Export/Import">
-        ⚙️
+      <div class="sidebar-title">Thread Notes</div>
+      <button class="settings-icon" id="settingsToggle" title="Settings">
+        <svg class="icon" viewBox="0 0 24 24">
+          <polyline points="6 9 12 15 18 9"></polyline>
+        </svg>
       </button>
     </div>
     <div class="button-row">
-      <button class="sidebar-btn" id="threadNotesBtn" disabled>
-        📄 Thread Notes
-      </button>
-      <button class="sidebar-btn active" id="allNotesBtn">
-        📋 All Notes
-      </button>
+      <button class="sidebar-btn" id="threadNotesBtn" disabled>Thread Notes</button>
+      <button class="sidebar-btn active" id="allNotesBtn">All Notes</button>
     </div>
   </div>
 
   <!-- Settings Panel -->
-  <div class="sidebar-settings" id="sidebarSettings" style="display: none;">
+  <div class="sidebar-settings" id="sidebarSettings">
     <div class="settings-header">
-      <h4>📦 Backup & Data</h4>
+      <h4>Backup & Data</h4>
     </div>
-    
-    <!-- Export Section -->
+
     <div class="settings-section">
       <button id="exportNotesBtn" class="settings-btn export-btn">
-        📥 Export All Notes
+        <svg class="icon" viewBox="0 0 24 24">
+          <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
+          <polyline points="7 10 12 15 17 10"></polyline>
+          <line x1="12" y1="15" x2="12" y2="3"></line>
+        </svg>
+        Export All Notes
       </button>
       <div class="help-text">Download backup of all your notes</div>
     </div>
-    
-    <!-- Import Section -->
+
     <div class="settings-section">
       <button id="importNotesBtn" class="settings-btn import-btn">
-        📤 Import Notes
+        <svg class="icon" viewBox="0 0 24 24">
+          <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
+          <polyline points="17 8 12 3 7 8"></polyline>
+          <line x1="12" y1="3" x2="12" y2="15"></line>
+        </svg>
+        Import Notes
       </button>
       <input type="file" id="importFile" accept=".json" style="display: none;">
       <div class="help-text">Restore notes from backup file</div>
     </div>
-    
-    <!-- Auto-Sync Section -->
-    <div class="settings-section">
-      <div class="sync-header">
-        <span>⏳ Auto-Sync</span>
-        <div id="autoSyncToggle" class="sync-toggle">
-          <div class="sync-toggle-slider"></div>
-        </div>
-      </div>
-      <div id="syncSettings" class="sync-settings" style="display: none;">
-        <div class="sync-option">
-          <label for="syncFrequency">Sync every:</label>
-          <select id="syncFrequency" class="sync-select">
-            <option value="1">1 minute</option>
-            <option value="5" selected>5 minutes</option>
-            <option value="15">15 minutes</option>
-            <option value="30">30 minutes</option>
-            <option value="60">1 hour</option>
-          </select>
-        </div>
-      </div>
-      <div class="help-text">Automatically backup notes to disk</div>
-    </div>
 
-    <!-- File Location Info -->
     <div class="settings-section file-location">
       <div class="help-text">
-        📁 <strong>Auto-backup location:</strong><br>
-        <code>Downloads/EmailNotes/EmailNotes/email-notes-sync.json</code>
+        <strong>☁️ Automatic Cloud Sync</strong><br>
+        Your notes sync automatically across all your Chrome browsers using Chrome Sync. No setup required!
       </div>
     </div>
 
-    <!-- Status Display -->
-    <div id="settingsStatus" class="settings-status" style="display: none;"></div>
+    <div id="settingsStatus" class="settings-status"></div>
   </div>
 
   <div class="sidebar-content">
     <!-- Thread Notes View -->
     <div class="content-view" id="threadNotesView">
-      <div class="thread-info" id="threadInfo" style="display: none;">
-        <div class="thread-subject" id="threadSubject">Loading...</div>
+      <div class="thread-info" id="threadInfo">
+        <div class="thread-info-header">
+          <div class="thread-subject" id="threadSubject">
+            <svg class="mail-icon icon" viewBox="0 0 24 24">
+              <path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"></path>
+              <polyline points="22,6 12,13 2,6"></polyline>
+            </svg>
+            <span id="threadSubjectText">Loading...</span>
+          </div>
+          <button class="thread-open-btn" id="openThreadBtn" title="Open this email thread" disabled>
+            <svg class="thread-open-icon" viewBox="0 0 24 24">
+              <path d="M7 17L17 7" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round"></path>
+              <polyline points="11,7 17,7 17,13" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round"></polyline>
+            </svg>
+            Open thread
+          </button>
+        </div>
         <div class="thread-details" id="threadDetails">Gmail • Account 1</div>
       </div>
 
-      <!-- Quill Rich Text Editor -->
-      <div id="quillEditor" style="min-height: 350px; max-height: 60vh;"></div>
-      
+      <!-- Milkdown Editor -->
+      <div id="quillEditor"></div>
+
       <div class="notes-footer">
         <div class="save-status">
           <div class="status-indicator ready" id="statusIndicator"></div>
           <span id="statusText">Ready</span>
         </div>
         <div class="notes-actions">
-          <button class="save-btn" id="saveNoteBtn" title="Save note now">💾</button>
-          <button class="delete-btn" id="deleteNoteBtn" title="Delete this note">🗑️</button>
+          <button class="icon-btn save-btn" id="saveNoteBtn" title="Save note">
+            <svg class="icon" viewBox="0 0 24 24">
+              <path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"></path>
+              <polyline points="17 21 17 13 7 13 7 21"></polyline>
+              <polyline points="7 3 7 8 15 8"></polyline>
+            </svg>
+          </button>
+          <button class="icon-btn delete-btn" id="deleteNoteBtn" title="Delete this note">
+            <svg class="icon" viewBox="0 0 24 24">
+              <polyline points="3 6 5 6 21 6"></polyline>
+              <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path>
+            </svg>
+          </button>
           <div id="lastUpdated"></div>
         </div>
       </div>
@@ -669,10 +865,10 @@
     <!-- All Notes View -->
     <div class="content-view active" id="allNotesView">
       <div class="search-section">
-        <input 
-          type="text" 
-          id="notesSearchInput" 
-          placeholder="Search notes..." 
+        <input
+          type="text"
+          id="notesSearchInput"
+          placeholder="Search notes..."
           class="search-input"
         >
         <div class="filter-options">
@@ -682,6 +878,13 @@
             <option value="subject">By Subject</option>
           </select>
         </div>
+        <button class="new-note-btn" id="newNoteBtn">
+          <svg viewBox="0 0 24 24">
+            <line x1="12" y1="5" x2="12" y2="19"></line>
+            <line x1="5" y1="12" x2="19" y2="12"></line>
+          </svg>
+          <span>New note</span>
+        </button>
       </div>
       <div class="notes-content">
         <div class="loading-state">
@@ -694,7 +897,12 @@
     <!-- No Thread State -->
     <div class="content-view" id="noThreadView">
       <div class="empty-state">
-        <div class="empty-icon">📧</div>
+        <div class="empty-icon">
+          <svg class="icon" style="width: 48px; height: 48px; stroke-width: 1.5;" viewBox="0 0 24 24">
+            <path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"></path>
+            <polyline points="22,6 12,13 2,6"></polyline>
+          </svg>
+        </div>
         <div class="empty-title">No Email Thread Detected</div>
         <div class="empty-description">
           Open a Gmail or Outlook conversation to add notes to that thread.
@@ -703,10 +911,7 @@
     </div>
   </div>
 
-  <!-- Quill.js Rich Text Editor -->
-  <script src="../lib/quill.min.js"></script>
-  
-  
-  <script src="sidebar.js"></script>
+  <!-- Load sidebar module (now using bundled Milkdown, no import map needed) -->
+  <script type="module" src="sidebar.js"></script>
 </body>
 </html>

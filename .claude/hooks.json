@@ -1,22 +1,77 @@
 {
   "PostToolUse": [
     {
-      "matcher": "Edit.*\\.(js|html|css)",
+      "matcher": "Edit.*(sidebar\\.js|gmail-sidebar\\.js|outlook-sidebar\\.js)",
       "hooks": [
         {
           "type": "agent",
-          "agent": "chrome-extension-architect",
-          "prompt": "Review the recent code changes for Chrome extension best practices and architectural decisions."
+          "agent": "javascript-specialist",
+          "prompt": "Review the JavaScript code changes for modern patterns, async handling, memory management, and Chrome extension best practices."
+        },
+        {
+          "type": "agent",
+          "agent": "security-specialist",
+          "prompt": "Review code changes for security vulnerabilities including XSS, injection risks, input validation, and secure message passing."
         }
       ]
     },
     {
-      "matcher": "Edit.*(todos\\.md|email_thread_notes_prd\\.md)",
+      "matcher": "Edit.*(gmail-sidebar\\.js|outlook-sidebar\\.js)",
       "hooks": [
         {
-          "type": "agent", 
+          "type": "agent",
+          "agent": "email-integration-specialist",
+          "prompt": "Review email platform integration code for thread detection reliability, selector robustness, and cross-platform compatibility."
+        }
+      ]
+    },
+    {
+      "matcher": "Edit.*background\\.js",
+      "hooks": [
+        {
+          "type": "agent",
+          "agent": "storage-sync-specialist",
+          "prompt": "Review storage and sync implementation for data integrity, performance, and sync reliability."
+        },
+        {
+          "type": "agent",
+          "agent": "chrome-extension-architect",
+          "prompt": "Review background service worker for Chrome API best practices, memory management, and lifecycle handling."
+        },
+        {
+          "type": "agent",
+          "agent": "security-specialist",
+          "prompt": "Review storage operations for secure data handling, input validation, and privacy protection."
+        }
+      ]
+    },
+    {
+      "matcher": "Edit.*(sidebar\\.html|sidebar\\.js).*css",
+      "hooks": [
+        {
+          "type": "agent",
+          "agent": "ui-ux-specialist",
+          "prompt": "Review UI changes for visual consistency, accessibility, user feedback patterns, and responsive design."
+        }
+      ]
+    },
+    {
+      "matcher": "Edit.*manifest\\.json",
+      "hooks": [
+        {
+          "type": "agent",
+          "agent": "chrome-extension-architect",
+          "prompt": "Review manifest changes for Manifest V3 compliance, permissions minimization, and security best practices."
+        }
+      ]
+    },
+    {
+      "matcher": "Edit.*(todos\\.md|email_thread_notes_prd\\.md|backlog\\.md)",
+      "hooks": [
+        {
+          "type": "agent",
           "agent": "product-manager",
-          "prompt": "Validate documentation updates against current implementation state and ensure consistency."
+          "prompt": "Validate documentation updates against current implementation state and ensure consistency with PRD requirements."
         }
       ]
     }
@@ -26,8 +81,13 @@
       "hooks": [
         {
           "type": "agent",
-          "agent": "product-manager", 
-          "prompt": "Perform final feature completeness validation before commit, checking PRD compliance and cross-platform compatibility."
+          "agent": "testing-validator",
+          "prompt": "Perform comprehensive validation of changes across Gmail and Outlook platforms. Check for regressions and cross-platform compatibility."
+        },
+        {
+          "type": "agent",
+          "agent": "product-manager",
+          "prompt": "Perform final feature completeness validation before commit, checking PRD compliance, documentation currency, and backwards compatibility."
         }
       ]
     }

@@ -1,0 +1,298 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Milkdown RTL Test - Hebrew Support (Simple)</title>
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@milkdown/theme-nord@7.3.6/lib/style.css">
+  <style>
+    * { box-sizing: border-box; }
+
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+      max-width: 900px;
+      margin: 40px auto;
+      padding: 20px;
+      background: #f5f5f5;
+    }
+
+    .test-container {
+      background: white;
+      border-radius: 12px;
+      padding: 30px;
+      box-shadow: 0 4px 12px rgba(0,0,0,0.08);
+      margin-bottom: 20px;
+    }
+
+    h1 {
+      color: #1a1a1a;
+      margin: 0 0 8px 0;
+      font-size: 28px;
+    }
+
+    .subtitle {
+      color: #666;
+      margin: 0 0 24px 0;
+      font-size: 15px;
+    }
+
+    #editor {
+      min-height: 400px;
+      border: 2px solid #e5e7eb;
+      border-radius: 8px;
+      padding: 20px;
+      background: #fafafa;
+      margin-bottom: 20px;
+    }
+
+    .test-buttons {
+      display: flex;
+      gap: 12px;
+      flex-wrap: wrap;
+      margin-bottom: 24px;
+    }
+
+    button {
+      padding: 12px 24px;
+      border: none;
+      border-radius: 8px;
+      cursor: pointer;
+      font-weight: 600;
+      font-size: 14px;
+      transition: all 0.2s;
+      box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+    }
+
+    button:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 4px 8px rgba(0,0,0,0.15);
+    }
+
+    .btn-hebrew { background: #6366f1; color: white; }
+    .btn-hebrew:hover { background: #4f46e5; }
+
+    .btn-english { background: #10b981; color: white; }
+    .btn-english:hover { background: #059669; }
+
+    .btn-mixed { background: #f59e0b; color: white; }
+    .btn-mixed:hover { background: #d97706; }
+
+    .btn-clear { background: #ef4444; color: white; }
+    .btn-clear:hover { background: #dc2626; }
+
+    .info-box {
+      padding: 16px 20px;
+      background: #f0f9ff;
+      border-left: 4px solid #3b82f6;
+      border-radius: 6px;
+      margin: 20px 0;
+    }
+
+    .info-box h3 {
+      margin: 0 0 8px 0;
+      color: #1e40af;
+      font-size: 16px;
+    }
+
+    .info-box p {
+      margin: 4px 0;
+      color: #1e3a8a;
+      font-size: 14px;
+    }
+
+    .results {
+      background: white;
+      border-radius: 12px;
+      padding: 24px;
+      box-shadow: 0 2px 8px rgba(0,0,0,0.08);
+      margin-top: 20px;
+    }
+
+    .results h2 {
+      margin: 0 0 16px 0;
+      color: #1a1a1a;
+      font-size: 20px;
+    }
+
+    .check-item {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      padding: 12px;
+      margin: 8px 0;
+      background: #f9fafb;
+      border-radius: 6px;
+    }
+
+    .check-icon {
+      font-size: 20px;
+      min-width: 24px;
+    }
+
+    .check-text {
+      flex: 1;
+      font-size: 14px;
+      color: #374151;
+    }
+
+    .milkdown {
+      outline: none;
+    }
+  </style>
+</head>
+<body>
+  <div class="test-container">
+    <h1>🧪 Milkdown RTL Test</h1>
+    <p class="subtitle">Testing Hebrew (עברית) and RTL support in Milkdown editor</p>
+
+    <div class="test-buttons">
+      <button class="btn-hebrew" onclick="loadHebrew()">📝 Load Hebrew Text</button>
+      <button class="btn-english" onclick="loadEnglish()">📄 Load English Text</button>
+      <button class="btn-mixed" onclick="loadMixed()">🔀 Load Mixed Text</button>
+      <button class="btn-clear" onclick="loadClear()">🗑️ Clear Editor</button>
+    </div>
+
+    <div id="editor"></div>
+
+    <div class="info-box">
+      <h3>✅ What to Check:</h3>
+      <p>1. Does Hebrew text align to the <strong>right side</strong>?</p>
+      <p>2. Do bullet lists appear on the <strong>right side</strong> for Hebrew?</p>
+      <p>3. Does formatting (bold, italic) work in Hebrew?</p>
+      <p>4. Does mixed Hebrew/English handle both directions?</p>
+    </div>
+  </div>
+
+  <div class="results">
+    <h2>📊 Manual Check Results</h2>
+    <div id="checklist">
+      <div class="check-item">
+        <span class="check-icon">❓</span>
+        <span class="check-text">Click "Load Hebrew Text" and check if text aligns <strong>right</strong></span>
+      </div>
+      <div class="check-item">
+        <span class="check-icon">❓</span>
+        <span class="check-text">Check if bullet points appear on the <strong>right side</strong></span>
+      </div>
+      <div class="check-item">
+        <span class="check-icon">❓</span>
+        <span class="check-text">Check if <strong>bold</strong> and <em>italic</em> work with Hebrew</span>
+      </div>
+      <div class="check-item">
+        <span class="check-icon">❓</span>
+        <span class="check-text">Click "Load Mixed Text" and check bidirectional handling</span>
+      </div>
+    </div>
+  </div>
+
+  <script type="module">
+    import { Editor, rootCtx, defaultValueCtx } from 'https://cdn.jsdelivr.net/npm/@milkdown/core@7.3.6/+esm';
+    import { commonmark } from 'https://cdn.jsdelivr.net/npm/@milkdown/preset-commonmark@7.3.6/+esm';
+    import { nord } from 'https://cdn.jsdelivr.net/npm/@milkdown/theme-nord@7.3.6/+esm';
+
+    let currentEditor = null;
+
+    // Test content
+    const testContent = {
+      hebrew: `# שלום עולם
+
+זהו טקסט בעברית. עברית היא שפה המתחילה מימין לשמאל (RTL).
+
+## רשימה בעברית
+
+- פריט ראשון
+- פריט שני
+- פריט שלישי
+
+### עיצוב טקסט
+
+זה **טקסט מודגש בעברית** וזה *טקסט נטוי*.
+
+נסה לבדוק:
+1. האם הטקסט מיושר לימין?
+2. האם הנקודות/מספרים מופיעים מצד ימין?
+3. האם העיצוב (מודגש/נטוי) עובד?`,
+
+      english: `# Hello World
+
+This is English text. English is a left-to-right (LTR) language.
+
+## English List
+
+- First item
+- Second item
+- Third item
+
+### Text Formatting
+
+This is **bold English text** and this is *italic text*.
+
+Check if:
+1. Text is left-aligned?
+2. Bullets/numbers appear on the left?
+3. Formatting works correctly?`,
+
+      mixed: `# שלום Hello עולם World
+
+זהו טקסט מעורב Mixed text עם עברית and English במשפט אחד in one sentence.
+
+## רשימה מעורבת Mixed List
+
+- עברית Hebrew עברית
+- English אנגלית English
+- مرحبا Arabic שלום
+
+### בדיקה Testing
+
+**Bold עברית Bold** and *Italic עברית Italic*
+
+Does each line detect direction correctly?
+האם כל שורה מזהה כיוון נכון?`
+    };
+
+    // Initialize editor with content
+    async function initEditor(content) {
+      try {
+        // Destroy previous editor if exists
+        if (currentEditor) {
+          currentEditor.destroy();
+        }
+
+        // Create new editor
+        currentEditor = await Editor.make()
+          .config((ctx) => {
+            ctx.set(rootCtx, document.getElementById('editor'));
+            ctx.set(defaultValueCtx, content);
+          })
+          .config(nord)
+          .use(commonmark)
+          .create();
+
+        console.log('✅ Editor initialized');
+        return true;
+      } catch (error) {
+        console.error('❌ Editor error:', error);
+        document.getElementById('editor').innerHTML =
+          `<div style="color: red; padding: 20px;">
+            <strong>Error:</strong> ${error.message}<br>
+            <small>Check console for details (F12)</small>
+          </div>`;
+        return false;
+      }
+    }
+
+    // Load functions
+    window.loadHebrew = () => initEditor(testContent.hebrew);
+    window.loadEnglish = () => initEditor(testContent.english);
+    window.loadMixed = () => initEditor(testContent.mixed);
+    window.loadClear = () => initEditor('');
+
+    // Auto-load Hebrew on start
+    window.addEventListener('load', () => {
+      setTimeout(() => {
+        loadHebrew();
+      }, 500);
+    });
+  </script>
+</body>
+</html>

@@ -10,3 +10,6 @@
 
 ## Code Cleanup
 - [To be added as part of maintenance]
+
+## Future Features
+- **FileSystem Access API integration**: Allow users to choose a specific cloud folder (iCloud, Google Drive, Dropbox) for manual backups without download UI animations or symlinks (cross-platform solution for advanced users)
