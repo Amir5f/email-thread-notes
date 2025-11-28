@@ -1,0 +1,17 @@
+{
+  "scripts": {
+    "build": "esbuild src/milkdown-bundle-entry.js --bundle --format=esm --outfile=lib/milkdown-bundle.js --minify"
+  },
+  "dependencies": {
+    "@milkdown/core": "^7.3.6",
+    "@milkdown/plugin-listener": "^7.3.6",
+    "@milkdown/preset-commonmark": "^7.3.6",
+    "@milkdown/theme-nord": "^7.3.6",
+    "remark-parse": "^11.0.0",
+    "remark-stringify": "^11.0.0",
+    "unified": "^11.0.5"
+  },
+  "devDependencies": {
+    "esbuild": "^0.27.0"
+  }
+}

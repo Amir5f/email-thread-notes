@@ -1,0 +1,22 @@
+import type { MilkdownPlugin, SliceType, TimerType } from '@milkdown/ctx';
+import type { InputRule } from '@milkdown/prose/inputrules';
+import type { Plugin } from '@milkdown/prose/state';
+import type { MarkViewConstructor, NodeViewConstructor } from '@milkdown/prose/view';
+import type { RemarkParser, RemarkPlugin } from '@milkdown/transformer';
+import type { Options } from 'remark-stringify';
+import type { Editor } from '../editor';
+export declare const InitReady: TimerType;
+export declare const initTimerCtx: SliceType<TimerType[], "initTimer">;
+export declare const editorCtx: SliceType<Editor, "editor">;
+export declare const inputRulesCtx: SliceType<InputRule[], "inputRules">;
+export declare const prosePluginsCtx: SliceType<Plugin<any>[], "prosePlugins">;
+export declare const remarkPluginsCtx: SliceType<RemarkPlugin<Record<string, unknown>>[], "remarkPlugins">;
+type NodeView = [nodeId: string, view: NodeViewConstructor];
+export declare const nodeViewCtx: SliceType<NodeView[], "nodeView">;
+type MarkView = [nodeId: string, view: MarkViewConstructor];
+export declare const markViewCtx: SliceType<MarkView[], "markView">;
+export declare const remarkCtx: SliceType<RemarkParser, 'remark'>;
+export declare const remarkStringifyOptionsCtx: SliceType<Options, "remarkStringifyOptions">;
+export declare function init(editor: Editor): MilkdownPlugin;
+export {};
+//# sourceMappingURL=init.d.ts.map

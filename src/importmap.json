@@ -1,0 +1,18 @@
+{
+  "imports": {
+    "@milkdown/ctx": "../lib/milkdown/ctx/lib/index.js",
+    "@milkdown/exception": "../lib/milkdown/ctx/node_modules/@milkdown/exception/lib/index.js",
+    "@milkdown/transformer": "../lib/milkdown/transformer/lib/index.js",
+    "@milkdown/prose/model": "../lib/milkdown/prose/lib/model.js",
+    "@milkdown/prose/state": "../lib/milkdown/prose/lib/state.js",
+    "@milkdown/prose/view": "../lib/milkdown/prose/lib/view.js",
+    "@milkdown/prose/commands": "../lib/milkdown/prose/lib/commands.js",
+    "@milkdown/prose/keymap": "../lib/milkdown/prose/lib/keymap.js",
+    "@milkdown/prose/inputrules": "../lib/milkdown/prose/lib/inputrules.js",
+    "@milkdown/prose": "../lib/milkdown/prose/lib/index.js",
+    "@milkdown/utils": "../lib/milkdown/utils/lib/index.js",
+    "remark-parse": "../lib/remark-parse/index.js",
+    "remark-stringify": "../lib/remark-stringify/index.js",
+    "unified": "../lib/unified/index.js"
+  }
+}

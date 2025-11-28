@@ -1,0 +1,704 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Email Thread Notes - Final UI Design</title>
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@milkdown/theme-nord@7.3.6/lib/style.css">
+  <style>
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+    }
+
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+      background: #f8f9fa;
+      height: 100vh;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      padding: 20px;
+    }
+
+    .demo-wrapper {
+      display: flex;
+      gap: 40px;
+      max-width: 1400px;
+      width: 100%;
+      align-items: flex-start;
+    }
+
+    .panel-container {
+      flex: 1;
+      max-width: 480px;
+      background: white;
+      border-radius: 12px;
+      box-shadow: 0 4px 20px rgba(0, 0, 0, 0.08);
+      overflow: hidden;
+      height: 700px;
+      display: flex;
+      flex-direction: column;
+      transition: box-shadow 0.3s ease;
+    }
+
+    .panel-container:hover {
+      box-shadow: 0 8px 30px rgba(0, 0, 0, 0.12);
+    }
+
+    .label {
+      text-align: center;
+      font-weight: 600;
+      color: #374151;
+      margin-bottom: 12px;
+      font-size: 14px;
+    }
+
+    /* NEW DESIGN WITH ANIMATIONS */
+    .new-design .sidebar-header {
+      padding: 20px;
+      border-bottom: 1px solid #f3f4f6;
+      background: white;
+      animation: slideDown 0.4s ease;
+    }
+
+    @keyframes slideDown {
+      from {
+        opacity: 0;
+        transform: translateY(-10px);
+      }
+      to {
+        opacity: 1;
+        transform: translateY(0);
+      }
+    }
+
+    .new-design .header-top {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 16px;
+    }
+
+    .new-design .title {
+      font-size: 18px;
+      font-weight: 600;
+      color: #111827;
+    }
+
+    .new-design .settings-icon {
+      width: 36px;
+      height: 36px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      border-radius: 8px;
+      cursor: pointer;
+      transition: all 0.2s ease;
+      color: #6b7280;
+      background: transparent;
+      border: none;
+      position: relative;
+    }
+
+    .new-design .settings-icon:hover {
+      background: #f3f4f6;
+      transform: rotate(90deg);
+    }
+
+    .new-design .settings-icon:active {
+      transform: rotate(90deg) scale(0.95);
+    }
+
+    /* SVG Icons */
+    .icon {
+      width: 20px;
+      height: 20px;
+      stroke: currentColor;
+      fill: none;
+      stroke-width: 2;
+      stroke-linecap: round;
+      stroke-linejoin: round;
+    }
+
+    .new-design .tabs {
+      display: flex;
+      gap: 4px;
+    }
+
+    .new-design .tab {
+      flex: 1;
+      padding: 10px 16px;
+      border: none;
+      background: none;
+      color: #6b7280;
+      font-size: 14px;
+      font-weight: 500;
+      cursor: pointer;
+      border-radius: 8px;
+      transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+      position: relative;
+      overflow: hidden;
+    }
+
+    .new-design .tab::before {
+      content: '';
+      position: absolute;
+      bottom: 0;
+      left: 0;
+      right: 0;
+      height: 2px;
+      background: #6366f1;
+      transform: scaleX(0);
+      transition: transform 0.3s ease;
+    }
+
+    .new-design .tab:hover {
+      background: #f9fafb;
+      color: #374151;
+      transform: translateY(-1px);
+    }
+
+    .new-design .tab.active {
+      color: #6366f1;
+      background: #eef2ff;
+    }
+
+    .new-design .tab.active::before {
+      transform: scaleX(1);
+    }
+
+    .new-design .sidebar-content {
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      overflow: hidden;
+      padding: 20px;
+      animation: fadeIn 0.5s ease 0.1s both;
+    }
+
+    @keyframes fadeIn {
+      from {
+        opacity: 0;
+        transform: translateY(10px);
+      }
+      to {
+        opacity: 1;
+        transform: translateY(0);
+      }
+    }
+
+    .new-design .thread-info {
+      background: linear-gradient(135deg, #f9fafb 0%, #f3f4f6 100%);
+      padding: 14px 16px;
+      border-radius: 10px;
+      margin-bottom: 20px;
+      border-left: 3px solid #6366f1;
+      transition: all 0.3s ease;
+      cursor: pointer;
+    }
+
+    .new-design .thread-info:hover {
+      transform: translateX(2px);
+      box-shadow: 0 2px 8px rgba(99, 102, 241, 0.1);
+    }
+
+    .new-design .thread-subject {
+      font-size: 14px;
+      font-weight: 600;
+      color: #111827;
+      margin-bottom: 4px;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .new-design .mail-icon {
+      width: 16px;
+      height: 16px;
+      color: #6366f1;
+    }
+
+    .new-design .thread-details {
+      font-size: 12px;
+      color: #6b7280;
+    }
+
+    .new-design #editor {
+      flex: 1;
+      border: none;
+      outline: none;
+      background: white;
+      overflow-y: auto;
+      padding: 8px 0;
+      animation: fadeIn 0.6s ease 0.2s both;
+    }
+
+    .new-design .editor-footer {
+      padding: 16px 0 0 0;
+      border-top: 1px solid #f3f4f6;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      animation: slideUp 0.4s ease 0.3s both;
+    }
+
+    @keyframes slideUp {
+      from {
+        opacity: 0;
+        transform: translateY(10px);
+      }
+      to {
+        opacity: 1;
+        transform: translateY(0);
+      }
+    }
+
+    .new-design .status {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      font-size: 13px;
+      color: #6b7280;
+    }
+
+    .new-design .status-dot {
+      width: 6px;
+      height: 6px;
+      border-radius: 50%;
+      background: #10b981;
+      animation: pulse 2s ease-in-out infinite;
+    }
+
+    @keyframes pulse {
+      0%, 100% {
+        opacity: 1;
+        transform: scale(1);
+      }
+      50% {
+        opacity: 0.7;
+        transform: scale(1.1);
+      }
+    }
+
+    .new-design .actions {
+      display: flex;
+      gap: 6px;
+    }
+
+    .new-design .icon-btn {
+      width: 36px;
+      height: 36px;
+      border: none;
+      background: transparent;
+      cursor: pointer;
+      border-radius: 8px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      color: #6b7280;
+      transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+      position: relative;
+    }
+
+    .new-design .icon-btn::before {
+      content: '';
+      position: absolute;
+      inset: 0;
+      border-radius: 8px;
+      background: currentColor;
+      opacity: 0;
+      transition: opacity 0.2s ease;
+    }
+
+    .new-design .icon-btn:hover {
+      background: #f3f4f6;
+      color: #374151;
+      transform: translateY(-2px);
+    }
+
+    .new-design .icon-btn:active {
+      transform: translateY(0) scale(0.95);
+    }
+
+    .new-design .icon-btn.save:hover {
+      color: #10b981;
+      background: #f0fdf4;
+    }
+
+    .new-design .icon-btn.delete:hover {
+      color: #ef4444;
+      background: #fef2f2;
+    }
+
+    /* OLD DESIGN (kept for comparison) */
+    .old-design .sidebar-header {
+      background: #f8f9fa;
+      border-bottom: 1px solid #dadce0;
+      padding: 16px;
+    }
+
+    .old-design .header-top {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 12px;
+    }
+
+    .old-design .platform-indicator {
+      font-size: 13px;
+      font-weight: 500;
+      color: #5f6368;
+      background: #e8f0fe;
+      padding: 6px 12px;
+      border-radius: 12px;
+    }
+
+    .old-design .settings-toggle {
+      background: none;
+      border: none;
+      font-size: 16px;
+      cursor: pointer;
+      padding: 6px;
+      border-radius: 4px;
+      color: #5f6368;
+    }
+
+    .old-design .button-row {
+      display: flex;
+      gap: 8px;
+    }
+
+    .old-design .sidebar-btn {
+      flex: 1;
+      padding: 8px 12px;
+      border: 1px solid #dadce0;
+      border-radius: 6px;
+      background: #ffffff;
+      color: #5f6368;
+      font-size: 13px;
+      cursor: pointer;
+    }
+
+    .old-design .sidebar-btn.active {
+      background: #1a73e8;
+      color: #ffffff;
+      border-color: #1a73e8;
+    }
+
+    .old-design .sidebar-content {
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      padding: 16px;
+    }
+
+    .old-design .thread-info {
+      background: #f8f9fa;
+      border: 1px solid #e8eaed;
+      border-radius: 6px;
+      padding: 12px;
+      margin-bottom: 16px;
+      font-size: 12px;
+    }
+
+    .old-design .thread-subject {
+      font-weight: 500;
+      color: #202124;
+      margin-bottom: 4px;
+    }
+
+    .old-design .thread-details {
+      color: #5f6368;
+    }
+
+    .old-design .ql-toolbar {
+      border: 1px solid #dadce0 !important;
+      border-bottom: none !important;
+      border-radius: 6px 6px 0 0 !important;
+      background: #f8f9fa;
+      padding: 8px;
+    }
+
+    .old-design .ql-container {
+      border: 1px solid #dadce0 !important;
+      border-radius: 0 0 6px 6px !important;
+      min-height: 320px;
+    }
+
+    .old-design .notes-footer {
+      margin-top: 12px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      font-size: 12px;
+      color: #5f6368;
+    }
+
+    .badge {
+      display: inline-block;
+      padding: 4px 12px;
+      border-radius: 12px;
+      font-size: 11px;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+    }
+
+    .badge.old {
+      background: #fee2e2;
+      color: #991b1b;
+    }
+
+    .badge.new {
+      background: #d1fae5;
+      color: #065f46;
+    }
+
+    /* Milkdown styling */
+    .milkdown h1 {
+      font-size: 24px;
+      font-weight: 600;
+      color: #111827;
+      margin: 0 0 16px 0;
+      line-height: 1.3;
+    }
+
+    .milkdown h2 {
+      font-size: 18px;
+      font-weight: 600;
+      color: #374151;
+      margin: 24px 0 12px 0;
+      line-height: 1.3;
+    }
+
+    .milkdown p {
+      font-size: 15px;
+      line-height: 1.6;
+      color: #374151;
+      margin: 0 0 12px 0;
+    }
+
+    .milkdown ul {
+      margin: 0 0 16px 0;
+      padding-left: 24px;
+    }
+
+    .milkdown li {
+      font-size: 15px;
+      line-height: 1.6;
+      color: #374151;
+      margin: 4px 0;
+    }
+
+    .milkdown strong {
+      font-weight: 600;
+      color: #111827;
+    }
+
+    .milkdown code {
+      background: #f3f4f6;
+      padding: 2px 6px;
+      border-radius: 4px;
+      font-family: 'SF Mono', Monaco, monospace;
+      font-size: 14px;
+      color: #6366f1;
+    }
+
+    /* Tooltip */
+    .tooltip {
+      position: absolute;
+      bottom: 100%;
+      left: 50%;
+      transform: translateX(-50%) translateY(-8px);
+      background: #1f2937;
+      color: white;
+      padding: 6px 12px;
+      border-radius: 6px;
+      font-size: 12px;
+      white-space: nowrap;
+      opacity: 0;
+      pointer-events: none;
+      transition: opacity 0.2s ease, transform 0.2s ease;
+    }
+
+    .icon-btn:hover .tooltip {
+      opacity: 1;
+      transform: translateX(-50%) translateY(-4px);
+    }
+
+    .comparison-note {
+      position: fixed;
+      bottom: 20px;
+      left: 50%;
+      transform: translateX(-50%);
+      background: white;
+      padding: 16px 24px;
+      border-radius: 12px;
+      box-shadow: 0 4px 20px rgba(0,0,0,0.15);
+      animation: slideUpNote 0.6s ease 0.5s both;
+    }
+
+    @keyframes slideUpNote {
+      from {
+        opacity: 0;
+        transform: translateX(-50%) translateY(20px);
+      }
+      to {
+        opacity: 1;
+        transform: translateX(-50%) translateY(0);
+      }
+    }
+
+    .comparison-note p {
+      font-size: 14px;
+      color: #6b7280;
+      margin: 0;
+    }
+
+    .comparison-note strong {
+      font-weight: 600;
+    }
+
+    .comparison-note .old-label {
+      color: #ef4444;
+    }
+
+    .comparison-note .new-label {
+      color: #10b981;
+    }
+  </style>
+</head>
+<body>
+  <div class="demo-wrapper">
+    <!-- Old Design -->
+    <div style="flex: 1;">
+      <div class="label"><span class="badge old">Current</span> Old Design</div>
+      <div class="panel-container old-design">
+        <div class="sidebar-header">
+          <div class="header-top">
+            <div class="platform-indicator">Gmail</div>
+            <button class="settings-toggle">⚙️</button>
+          </div>
+          <div class="button-row">
+            <button class="sidebar-btn active">📄 Thread Notes</button>
+            <button class="sidebar-btn">📋 All Notes</button>
+          </div>
+        </div>
+
+        <div class="sidebar-content">
+          <div class="thread-info">
+            <div class="thread-subject">Re: Project Meeting Notes</div>
+            <div class="thread-details">Gmail • you@email.com</div>
+          </div>
+
+          <div class="ql-toolbar">
+            <button style="width: 28px; height: 28px; border: none; background: #e8eaed; border-radius: 4px; margin-right: 4px;"><strong>B</strong></button>
+            <button style="width: 28px; height: 28px; border: none; background: #e8eaed; border-radius: 4px; margin-right: 4px;"><em>I</em></button>
+            <button style="width: 28px; height: 28px; border: none; background: #e8eaed; border-radius: 4px; margin-right: 4px;"><u>U</u></button>
+            <button style="width: 28px; height: 28px; border: none; background: #e8eaed; border-radius: 4px;">🔗</button>
+          </div>
+
+          <div class="ql-container">
+            <div style="padding: 12px; color: #9aa0a6; font-size: 15px;">
+              Add your private notes for this email thread...
+            </div>
+          </div>
+
+          <div class="notes-footer">
+            <div style="display: flex; align-items: center; gap: 6px;">
+              <div style="width: 8px; height: 8px; border-radius: 50%; background: #9aa0a6;"></div>
+              <span>Ready</span>
+            </div>
+            <div style="display: flex; gap: 8px;">
+              <span>💾</span>
+              <span>🗑️</span>
+              <span style="color: #9aa0a6; font-size: 11px;">2m ago</span>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- New Design -->
+    <div style="flex: 1;">
+      <div class="label"><span class="badge new">New ✨</span> Modern Design</div>
+      <div class="panel-container new-design">
+        <div class="sidebar-header">
+          <div class="header-top">
+            <div class="title">Thread Notes</div>
+            <button class="settings-icon">
+              <svg class="icon" viewBox="0 0 24 24">
+                <circle cx="12" cy="12" r="3"></circle>
+                <path d="M12 1v6m0 6v6m8.66-10l-5.2 3m-3.46 2l-5.2 3m13.86 0l-5.2-3m-3.46-2l-5.2-3"></path>
+              </svg>
+            </button>
+          </div>
+          <div class="tabs">
+            <button class="tab active">Thread Notes</button>
+            <button class="tab">All Notes</button>
+          </div>
+        </div>
+
+        <div class="sidebar-content">
+          <div class="thread-info">
+            <div class="thread-subject">
+              <svg class="mail-icon icon" viewBox="0 0 24 24">
+                <path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"></path>
+                <polyline points="22,6 12,13 2,6"></polyline>
+              </svg>
+              Re: Project Meeting Notes
+            </div>
+            <div class="thread-details">Gmail · you@email.com</div>
+          </div>
+
+          <div id="editor" class="milkdown">
+            <h1>Meeting Action Items</h1>
+            <p>Following up from today's discussion:</p>
+            <ul>
+              <li>Review Q4 roadmap by Friday</li>
+              <li>Schedule follow-up with design team</li>
+              <li>Update <code>project-spec.md</code> with new requirements</li>
+            </ul>
+            <h2>Key Decisions</h2>
+            <p>We agreed to move forward with <strong>Option B</strong> for the architecture redesign. The team will need to coordinate on the timeline.</p>
+          </div>
+
+          <div class="editor-footer">
+            <div class="status">
+              <div class="status-dot"></div>
+              <span>Saved · 2 min ago</span>
+            </div>
+            <div class="actions">
+              <button class="icon-btn save">
+                <svg class="icon" viewBox="0 0 24 24">
+                  <path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"></path>
+                  <polyline points="17 21 17 13 7 13 7 21"></polyline>
+                  <polyline points="7 3 7 8 15 8"></polyline>
+                </svg>
+                <span class="tooltip">Save note</span>
+              </button>
+              <button class="icon-btn delete">
+                <svg class="icon" viewBox="0 0 24 24">
+                  <polyline points="3 6 5 6 21 6"></polyline>
+                  <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path>
+                </svg>
+                <span class="tooltip">Delete note</span>
+              </button>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="comparison-note">
+    <p>
+      <span class="old-label"><strong>Old:</strong></span> Emojis, cluttered, boxes, dated
+      &nbsp;&nbsp;|&nbsp;&nbsp;
+      <span class="new-label"><strong>New:</strong></span> SVG icons, animations, clean, modern
+    </p>
+  </div>
+</body>
+</html>

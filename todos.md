@@ -25,13 +25,16 @@
 
 ## 📝 Recently Completed Tasks
 
+- ✅ **Chrome Sync Migration (v2.2.0)**: Migrated from local storage + file backups to Chrome Storage Sync API for automatic cross-device synchronization
+  - Eliminated download folder backup animations (no more constant download UI)
+  - Removed complex symlink setup requirements
+  - Notes now sync automatically across all Chrome browsers
+  - Added quota checking for Chrome sync limits (8KB per note)
+  - Kept manual export/import for backup purposes
 - ✅ **Storage Format Migration**: Updated from markdown to HTML format for better rich text support
 - ✅ **Library Dependencies Cleanup**: Removed snarkdown and DOMPurify dependencies for cleaner architecture
 - ✅ **Codebase Restructuring**: Organized files into src/, assets/, lib/ directories with updated manifest
 - ✅ **Import/Export Recovery**: Re-introduced sidebar settings panel with complete export/import functionality
-- ✅ **Auto-Sync Controls**: Added toggle switch and frequency selection (1-60 minutes) to sidebar settings
-- ✅ **UI Visual Fixes**: Fixed settings button positioning, auto-sync toggle sizing, and text cutoff issues
-- ✅ **CSS Conflicts Resolution**: Separated settings button and auto-sync toggle CSS classes for proper styling
 
 ---
 
@@ -39,10 +42,9 @@
 
 ### Agreed Priority: Missing Features & Code Cleanup
 - [x] **Re-introduce import/export functionality** - ✅ COMPLETED: Added settings panel with export/import buttons to sidebar
-- [x] **Add auto-sync controls to sidebar** - ✅ COMPLETED: Added toggle switch and frequency controls (1-60 min options)
-- [x] **Add UI indication for file location** - Help menu showing where files are saved
+- [x] **Migrate to Chrome Storage Sync API** - ✅ COMPLETED: Automatic cross-device sync without downloads/symlinks
+- [ ] **Setup dialogue** - Allow user to configure a filename for the notes he's taking now. Use case - I use the same browser for work and personal, and I feel more comfortable to manage 2 separate files.
 - [ ] **Favorite note to top** - Pin important notes to the top of the list
-- [ ] **Re-introduce sync setup dialogue** - Help menu explaining cross-device sync setup
 - [ ] **Capture account email properly** - Platform categorization isn't enough, need actual email
 - [ ] **Full-text search with highlighting** - Search across all notes with result highlighting
 - [x] **Archive overlay approach code** - Move old overlay files to archive directory
@@ -82,11 +84,11 @@
 
 ## 📊 Current Status
 
-**Version**: v2.1.2 (Storage Format Optimization & Codebase Restructuring)  
-**Status**: Production ready with 90% of core functionality complete  
-**Next Milestone**: v2.2.0 (Advanced Features & Performance)
+**Version**: v2.2.0 (Chrome Storage Sync Migration)
+**Status**: Production ready with automatic cross-device synchronization
+**Next Milestone**: v2.3.0 (Advanced Features & Performance)
 
-**Architecture**: Chrome Side Panel API with simplified content scripts  
-**Platforms**: Gmail and Outlook web clients  
-**Storage**: Local Chrome storage with optional cloud sync  
+**Architecture**: Chrome Side Panel API with simplified content scripts
+**Platforms**: Gmail and Outlook web clients
+**Storage**: Chrome Storage Sync API (automatic cross-device sync)
 **Languages**: Full RTL support (Hebrew, etc.)

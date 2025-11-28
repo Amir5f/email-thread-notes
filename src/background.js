@@ -4,8 +4,10 @@ class EmailNotesStorage {
   constructor() {
     this.storagePrefix = 'email_notes_';
     this.metadataKey = 'email_notes_metadata';
-    this.debouncedBackupTimer = null;
-    this.backupDebounceDelay = 10000; // 10 seconds
+    // Chrome sync quotas
+    this.QUOTA_BYTES_PER_ITEM = chrome.storage.sync.QUOTA_BYTES_PER_ITEM || 8192; // 8KB default
+    this.MAX_ITEMS = chrome.storage.sync.MAX_ITEMS || 512;
+    this.MAX_WRITE_OPERATIONS_PER_MINUTE = chrome.storage.sync.MAX_WRITE_OPERATIONS_PER_MINUTE || 120;
   }
 
   // Save a note for a specific thread
@@ -28,19 +30,27 @@ class EmailNotesStorage {
 
       const storageKey = `${this.storagePrefix}${threadId}`;
       console.log('Background: Using storage key:', storageKey);
-      
-      // Save the note
-      await chrome.storage.local.set({
+
+      // Check quota before saving
+      const noteSize = new Blob([JSON.stringify(noteData)]).size;
+      if (noteSize > this.QUOTA_BYTES_PER_ITEM) {
+        console.warn('Background: Note size exceeds Chrome sync quota:', noteSize, 'bytes');
+        return {
+          success: false,
+          error: `Note too large (${Math.round(noteSize/1024)}KB). Chrome sync limit is ${Math.round(this.QUOTA_BYTES_PER_ITEM/1024)}KB per note.`,
+          quotaExceeded: true
+        };
+      }
+
+      // Save the note using chrome.storage.sync for automatic cross-device sync
+      await chrome.storage.sync.set({
         [storageKey]: noteData
       });
 
-      console.log('Background: Note saved successfully for threadId:', threadId);
+      console.log('Background: Note saved successfully to sync storage for threadId:', threadId);
 
       // Update metadata
       await this.updateMetadata(threadId, noteData);
-
-      // Note: Debounced backup will be triggered by the content script after auto-save
-      // No immediate backup needed here to avoid duplicate downloads
 
       return { success: true, noteData };
     } catch (error) {
@@ -54,14 +64,13 @@ class EmailNotesStorage {
     try {
       const storageKey = `${this.storagePrefix}${threadId}`;
       console.log('Background: Getting note for threadId:', threadId, 'using key:', storageKey);
-      
-      
-      const result = await chrome.storage.local.get([storageKey]);
+
+      const result = await chrome.storage.sync.get([storageKey]);
       const note = result[storageKey] || null;
-      
+
       console.log('Background: Retrieved note for threadId:', threadId, ':', note);
       console.log('Background: Raw result object:', result);
-      
+
       return note;
     } catch (error) {
       console.error('Background: Error getting note for threadId:', threadId, error);
@@ -73,23 +82,20 @@ class EmailNotesStorage {
   async deleteNote(threadId) {
     try {
       console.log('Background: Deleting note for threadId:', threadId);
-      
+
       const storageKey = `${this.storagePrefix}${threadId}`;
-      
+
       // Check if note exists before deleting
-      const result = await chrome.storage.local.get([storageKey]);
+      const result = await chrome.storage.sync.get([storageKey]);
       const noteExists = result[storageKey] !== undefined;
-      
+
       if (noteExists) {
-        await chrome.storage.local.remove([storageKey]);
+        await chrome.storage.sync.remove([storageKey]);
         console.log('Background: Note deleted successfully for threadId:', threadId);
-        
+
         // Update metadata
         await this.removeFromMetadata(threadId);
-        
-        // Trigger immediate backup for delete operations (important for data safety)
-        await this.immediateBackup();
-        
+
         return { success: true, existed: true };
       } else {
         console.log('Background: Note not found for threadId:', threadId);
@@ -101,34 +107,19 @@ class EmailNotesStorage {
     }
   }
 
-  // Get all notes (with data recovery from disk if Chrome storage is empty)
+  // Get all notes
   async getAllNotes() {
     try {
-      const allData = await chrome.storage.local.get(null);
+      const allData = await chrome.storage.sync.get(null);
       const notes = {};
-      
+
       for (const [key, value] of Object.entries(allData)) {
         if (key.startsWith(this.storagePrefix) && key !== this.metadataKey) {
           const threadId = key.replace(this.storagePrefix, '');
           notes[threadId] = value;
         }
       }
-      
-      // If no notes found in Chrome storage, attempt data recovery from disk
-      if (Object.keys(notes).length === 0) {
-        console.log('No notes found in Chrome storage, attempting data recovery from disk');
-        await this.attemptDataRecovery();
-        
-        // Try again after recovery attempt
-        const recoveredData = await chrome.storage.local.get(null);
-        for (const [key, value] of Object.entries(recoveredData)) {
-          if (key.startsWith(this.storagePrefix) && key !== this.metadataKey) {
-            const threadId = key.replace(this.storagePrefix, '');
-            notes[threadId] = value;
-          }
-        }
-      }
-      
+
       return notes;
     } catch (error) {
       console.error('Error getting all notes:', error);
@@ -152,7 +143,7 @@ class EmailNotesStorage {
       metadata.totalNotes = Object.keys(metadata.notes).length;
       metadata.lastUpdated = Date.now();
 
-      await chrome.storage.local.set({
+      await chrome.storage.sync.set({
         [this.metadataKey]: metadata
       });
     } catch (error) {
@@ -168,7 +159,7 @@ class EmailNotesStorage {
       metadata.totalNotes = Object.keys(metadata.notes).length;
       metadata.lastUpdated = Date.now();
 
-      await chrome.storage.local.set({
+      await chrome.storage.sync.set({
         [this.metadataKey]: metadata
       });
     } catch (error) {
@@ -179,7 +170,7 @@ class EmailNotesStorage {
   // Get metadata
   async getMetadata() {
     try {
-      const result = await chrome.storage.local.get([this.metadataKey]);
+      const result = await chrome.storage.sync.get([this.metadataKey]);
       return result[this.metadataKey] || {
         version: '1.0.0',
         notes: {},
@@ -202,8 +193,8 @@ class EmailNotesStorage {
   // Check storage usage
   async getStorageUsage() {
     try {
-      const usage = await chrome.storage.local.getBytesInUse();
-      const quota = chrome.storage.local.QUOTA_BYTES || 5242880; // 5MB default
+      const usage = await chrome.storage.sync.getBytesInUse();
+      const quota = chrome.storage.sync.QUOTA_BYTES || 102400; // 100KB default
       return {
         used: usage,
         quota: quota,
@@ -297,7 +288,7 @@ class EmailNotesStorage {
           
           if (!merge) {
             // Check if note already exists
-            const existing = await chrome.storage.local.get([storageKey]);
+            const existing = await chrome.storage.sync.get([storageKey]);
             if (existing[storageKey] && !overwrite) {
               skipped++;
               continue;
@@ -318,7 +309,7 @@ class EmailNotesStorage {
             originalBackupDate: importData.createdDate
           };
           
-          await chrome.storage.local.set({ [storageKey]: restoreData });
+          await chrome.storage.sync.set({ [storageKey]: restoreData });
           imported++;
           
         } catch (noteError) {
@@ -340,7 +331,7 @@ class EmailNotesStorage {
           sourceVersion: importData.version
         };
         
-        await chrome.storage.local.set({ [this.metadataKey]: currentMetadata });
+        await chrome.storage.sync.set({ [this.metadataKey]: currentMetadata });
       }
       
       console.log(`Background: Import completed - ${imported} imported, ${skipped} skipped, ${errors} errors`);
@@ -359,254 +350,14 @@ class EmailNotesStorage {
     }
   }
 
-  // Get backup settings
-  async getBackupSettings() {
-    try {
-      const result = await chrome.storage.local.get(['backupSettings']);
-      return result.backupSettings || {
-        autoBackupEnabled: false,
-        autoBackupFrequency: 'weekly', // daily, weekly, monthly
-        lastAutoBackup: null,
-        backupLocation: 'downloads', // downloads, gdrive, icloud
-        includeMetadata: true
-      };
-    } catch (error) {
-      console.error('Error getting backup settings:', error);
-      return null;
-    }
-  }
-
-  // Save backup settings
-  async saveBackupSettings(settings) {
-    try {
-      await chrome.storage.local.set({ backupSettings: settings });
-      return { success: true };
-    } catch (error) {
-      console.error('Error saving backup settings:', error);
-      return { success: false, error: error.message };
-    }
-  }
-
-  // Auto-sync functionality
-  async enableAutoSync(frequencyMinutes = 5) {
-    try {
-      console.log('Background: Enabling auto-sync with frequency:', frequencyMinutes, 'minutes');
-      
-      // Clear any existing sync timer
-      if (this.syncTimer) {
-        clearInterval(this.syncTimer);
-      }
-      
-      // Create sync file immediately
-      await this.createSyncFile();
-      
-      // Set up periodic sync
-      this.syncTimer = setInterval(async () => {
-        await this.performAutoSync();
-      }, frequencyMinutes * 60 * 1000);
-      
-      // Save sync settings
-      const syncSettings = {
-        enabled: true,
-        frequency: frequencyMinutes,
-        lastSync: Date.now(),
-        syncFileName: 'email-notes-sync.json'
-      };
-      
-      await chrome.storage.local.set({ syncSettings });
-      
-      return { success: true, message: 'Auto-sync enabled' };
-    } catch (error) {
-      console.error('Error enabling auto-sync:', error);
-      return { success: false, error: error.message };
-    }
-  }
-
-  async disableAutoSync() {
-    try {
-      console.log('Background: Disabling auto-sync');
-      
-      if (this.syncTimer) {
-        clearInterval(this.syncTimer);
-        this.syncTimer = null;
-      }
-      
-      const syncSettings = {
-        enabled: false,
-        frequency: 5,
-        lastSync: null,
-        syncFileName: 'email-notes-sync.json'
-      };
-      
-      await chrome.storage.local.set({ syncSettings });
-      
-      return { success: true, message: 'Auto-sync disabled' };
-    } catch (error) {
-      console.error('Error disabling auto-sync:', error);
-      return { success: false, error: error.message };
-    }
-  }
-
-  async createSyncFile() {
-    try {
-      const allNotes = await this.getAllNotes();
-      const metadata = await this.getMetadata();
-      const timestamp = new Date().toISOString();
-      
-      const backupData = {
-        version: '2.0.0',
-        createdDate: timestamp,
-        deviceId: await this.getDeviceId(),
-        metadata: metadata,
-        notes: allNotes,
-        totalNotes: Object.keys(allNotes).length
-      };
-      
-      const jsonString = JSON.stringify(backupData, null, 2);
-      
-      // Convert to data URL for download (works in service workers)
-      const dataUrl = 'data:application/json;base64,' + btoa(unescape(encodeURIComponent(jsonString)));
-      
-      // Create file in EmailNotes subfolder for symlink compatibility
-      const filename = 'EmailNotes/EmailNotes/email-notes-sync.json';
-      
-      // Download to user's configured subfolder in Downloads
-      const downloadId = await chrome.downloads.download({
-        url: dataUrl,
-        filename: filename,
-        conflictAction: 'overwrite', // Always overwrite the sync file
-        saveAs: false // Don't prompt user, use default Downloads location
-      });
-      
-      console.log('Background: Sync file created with download ID:', downloadId);
-      
-      // Update last sync time
-      const currentSyncSettings = await this.getSyncSettings();
-      currentSyncSettings.lastSync = Date.now();
-      await chrome.storage.local.set({ syncSettings: currentSyncSettings });
-      
-      return { success: true, downloadId };
-    } catch (error) {
-      console.error('Error creating sync file:', error);
-      return { success: false, error: error.message };
-    }
-  }
-
-  async performAutoSync() {
-    try {
-      console.log('Background: Performing auto-sync');
-      
-      // TODO: Check if sync file was modified externally and import changes
-      // For now, just export current state
-      await this.createSyncFile();
-      
-      return { success: true };
-    } catch (error) {
-      console.error('Error during auto-sync:', error);
-      return { success: false, error: error.message };
-    }
-  }
-
-  async getSyncSettings() {
-    try {
-      const result = await chrome.storage.local.get(['syncSettings']);
-      return result.syncSettings || {
-        enabled: false,
-        frequency: 5,
-        lastSync: null,
-        syncFileName: 'email-notes-sync.json',
-        syncFolder: 'EmailNotes'
-      };
-    } catch (error) {
-      console.error('Error getting sync settings:', error);
-      return { enabled: false, frequency: 5, lastSync: null, syncFileName: 'email-notes-sync.json', syncFolder: 'EmailNotes' };
-    }
-  }
-
-  async getDeviceId() {
-    try {
-      let result = await chrome.storage.local.get(['deviceId']);
-      if (!result.deviceId) {
-        // Generate a unique device ID
-        const deviceId = 'device_' + Math.random().toString(36).substr(2, 9) + '_' + Date.now();
-        await chrome.storage.local.set({ deviceId });
-        return deviceId;
-      }
-      return result.deviceId;
-    } catch (error) {
-      console.error('Error getting device ID:', error);
-      return 'unknown_device';
-    }
-  }
-
-  // Debounced backup to disk - triggers after user stops typing for 2 seconds
-  triggerDebouncedBackup() {
-    // Clear existing timer
-    if (this.debouncedBackupTimer) {
-      clearTimeout(this.debouncedBackupTimer);
-    }
-
-    // Set new timer for debounced backup
-    this.debouncedBackupTimer = setTimeout(async () => {
-      try {
-        console.log('Background: Performing debounced backup to disk');
-        await this.createSyncFile();
-      } catch (error) {
-        console.error('Error during debounced backup:', error);
-      }
-    }, this.backupDebounceDelay);
-  }
-
-  // Immediate backup to disk - for save/delete operations
-  async immediateBackup() {
-    try {
-      console.log('Background: Performing immediate backup to disk');
-      return await this.createSyncFile();
-    } catch (error) {
-      console.error('Error during immediate backup:', error);
-      return { success: false, error: error.message };
-    }
-  }
-
-  // Attempt to recover data from sync file if Chrome storage is empty
-  async attemptDataRecovery() {
-    try {
-      console.log('Background: Attempting data recovery from sync file');
-      
-      // Try to read the sync file by simulating a file picker dialog
-      // Since we can't directly read files from disk in a service worker,
-      // we'll check if there's a sync file and ask user to import it
-      
-      // For now, we'll just log that recovery should happen
-      // In a real scenario, this would trigger a notification to the user
-      console.log('Background: Data recovery requires user action - import sync file manually');
-      
-      // Check if we have any backup settings that indicate where the file might be
-      const syncSettings = await this.getSyncSettings();
-      if (syncSettings.lastSync) {
-        console.log('Background: Last sync was at:', new Date(syncSettings.lastSync));
-        console.log('Background: Sync file should be at: Downloads/EmailNotes/EmailNotes/email-notes-sync.json');
-      }
-      
-      return { 
-        success: false, 
-        requiresUserAction: true, 
-        message: 'Data recovery requires manually importing the sync file from Downloads/EmailNotes/EmailNotes/email-notes-sync.json'
-      };
-      
-    } catch (error) {
-      console.error('Error during data recovery attempt:', error);
-      return { success: false, error: error.message };
-    }
-  }
 }
 
 // Initialize storage manager
 const storageManager = new EmailNotesStorage();
 
-chrome.runtime.onInstalled.addListener(() => {
-  console.log('Email Thread Notes extension installed');
-  
+chrome.runtime.onInstalled.addListener(async (details) => {
+  console.log('Email Thread Notes extension installed/updated');
+
   // Enable side panel for supported email domains
   chrome.sidePanel.setPanelBehavior({ openPanelOnActionClick: true })
     .catch((error) => console.error('Failed to set side panel behavior:', error));
@@ -694,60 +445,6 @@ chrome.runtime.onMessage.addListener((request, _sender, sendResponse) => {
           sendResponse(importResult);
           break;
 
-        case 'getBackupSettings':
-          const backupSettings = await storageManager.getBackupSettings();
-          sendResponse({ settings: backupSettings });
-          break;
-
-        case 'saveBackupSettings':
-          const saveSettingsResult = await storageManager.saveBackupSettings(request.settings);
-          sendResponse(saveSettingsResult);
-          break;
-
-        case 'enableAutoSync':
-          const enableSyncResult = await storageManager.enableAutoSync(request.frequency);
-          sendResponse(enableSyncResult);
-          break;
-
-        case 'disableAutoSync':
-          const disableSyncResult = await storageManager.disableAutoSync();
-          sendResponse(disableSyncResult);
-          break;
-
-        case 'getSyncSettings':
-          const syncSettings = await storageManager.getSyncSettings();
-          sendResponse({ settings: syncSettings });
-          break;
-
-        case 'createSyncFile':
-          const createSyncResult = await storageManager.createSyncFile();
-          sendResponse(createSyncResult);
-          break;
-
-        case 'triggerImmediateSync':
-          const immediateSyncResult = await storageManager.performAutoSync();
-          if (immediateSyncResult.success) {
-            sendResponse({ success: true, message: 'Sync completed successfully' });
-          } else {
-            sendResponse({ success: false, error: immediateSyncResult.error || 'Sync failed' });
-          }
-          break;
-
-        case 'triggerDebouncedBackup':
-          storageManager.triggerDebouncedBackup();
-          sendResponse({ success: true, message: 'Debounced backup scheduled' });
-          break;
-
-        case 'immediateBackup':
-          const backupResult = await storageManager.immediateBackup();
-          sendResponse(backupResult);
-          break;
-
-        case 'attemptDataRecovery':
-          const recoveryResult = await storageManager.attemptDataRecovery();
-          sendResponse(recoveryResult);
-          break;
-
         default:
           sendResponse({ success: false, error: 'Unknown action' });
       }
@@ -761,19 +458,3 @@ chrome.runtime.onMessage.addListener((request, _sender, sendResponse) => {
   return true; // Keep message channel open for async response
 });
 
-// Cleanup timers when service worker is suspended/terminated
-chrome.runtime.onSuspend.addListener(() => {
-  console.log('Background: Service worker suspending, cleaning up timers');
-  
-  if (storageManager.syncTimer) {
-    clearInterval(storageManager.syncTimer);
-    storageManager.syncTimer = null;
-    console.log('Background: Auto-sync timer cleaned up');
-  }
-  
-  if (storageManager.debouncedBackupTimer) {
-    clearTimeout(storageManager.debouncedBackupTimer);
-    storageManager.debouncedBackupTimer = null;
-    console.log('Background: Debounced backup timer cleaned up');
-  }
-});
