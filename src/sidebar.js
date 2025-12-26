@@ -11,21 +11,31 @@ class EmailNotesSidebar {
     this.saveTimeout = null;
     this.milkdownEditor = null; // Milkdown editor instance
     this.rtlObserver = null; // MutationObserver for RTL detection
+
+    // Promise to track when Milkdown editor is fully initialized
+    this.editorReadyPromise = null;
+    this.resolveEditorReady = null;
+
     this.init();
   }
 
   async init() {
     console.log('Email Notes Sidebar initialized');
-    
+
+    // Create the editor ready promise
+    this.editorReadyPromise = new Promise((resolve) => {
+      this.resolveEditorReady = resolve;
+    });
+
     // Set up UI event listeners
     this.setupEventListeners();
-    
+
     // Initial load
     await this.loadInitialState();
-    
+
     // Listen for thread updates from content scripts
     this.setupMessageListener();
-    
+
     // Request current thread info from active tab
     this.requestCurrentThreadInfo();
   }
@@ -78,7 +88,12 @@ class EmailNotesSidebar {
     window.addEventListener('focus', () => {
       console.log('Sidebar gained focus, refreshing current state');
       this.requestCurrentThreadInfo();
-      
+
+      // Update open thread button label in case user navigated in Gmail
+      if (this.currentThreadId) {
+        this.updateOpenThreadButtonLabel();
+      }
+
       // Also refresh All Notes if we're in that view
       if (this.currentView === 'all' && this.allNotes) {
         this.loadAllNotesView();
@@ -405,12 +420,13 @@ class EmailNotesSidebar {
       threadInfo.style.display = 'none';
     }
 
-    // Clear platform/account info to show ALL notes when no thread is active
-    // Keep platform for indicator display but clear for filtering
+    // Keep platform/account info even when no thread is active
+    // This allows "All Notes" to filter by current Gmail account
+    // DON'T clear these - they're set by handlePlatformChange()
     const wasOnPlatform = this.currentPlatform;
-    this.currentPlatform = null;
-    this.currentAccount = null;
-    this.currentAccountEmail = null;
+    // this.currentPlatform = null;  // Keep platform info
+    // this.currentAccount = null;   // Keep account info
+    // this.currentAccountEmail = null; // Keep account email
 
     // Disable Thread Notes button
     const threadBtn = document.getElementById('threadNotesBtn');
@@ -484,19 +500,64 @@ class EmailNotesSidebar {
     const threadSubjectText = document.getElementById('threadSubjectText');
     const threadDetails = document.getElementById('threadDetails');
     const openThreadBtn = document.getElementById('openThreadBtn');
-    
+
     if (threadSubjectText) {
       threadSubjectText.textContent = subject || 'Email Thread';
     } else if (threadSubject) {
       threadSubject.textContent = subject || 'Email Thread';
     }
-    
+
     // Show account email if available, otherwise show platform + thread ID
     const accountDisplay = accountEmail || `Thread: ${threadId.substring(0, 8)}...`;
     threadDetails.textContent = `${platform} • ${accountDisplay}`;
     threadInfo.style.display = 'block';
     if (openThreadBtn) {
       openThreadBtn.disabled = false;
+      this.updateOpenThreadButtonLabel();
+    }
+  }
+
+  updateOpenThreadButtonLabel() {
+    const openThreadBtn = document.getElementById('openThreadBtn');
+    if (!openThreadBtn) return;
+
+    // Check if we're currently on this thread by comparing with browser URL
+    this.checkIfOnCurrentThread().then(isOnCurrentThread => {
+      const buttonText = openThreadBtn.querySelector('.button-text');
+      if (buttonText) {
+        if (isOnCurrentThread) {
+          buttonText.textContent = 'Current thread';
+          openThreadBtn.title = 'You are viewing this thread';
+        } else {
+          buttonText.textContent = 'Open thread';
+          openThreadBtn.title = 'Open this email thread';
+        }
+      }
+    });
+  }
+
+  async checkIfOnCurrentThread() {
+    try {
+      const [activeTab] = await chrome.tabs.query({ active: true, currentWindow: true });
+      if (!activeTab || !activeTab.url) return false;
+
+      const url = new URL(activeTab.url);
+
+      // Check if we're on Gmail
+      if (url.hostname === 'mail.google.com' && this.currentOriginalThreadId) {
+        // Extract thread ID from Gmail URL
+        const match = url.hash.match(/#inbox\/([A-Za-z\d]+)$/);
+        if (match && match[1] === this.currentOriginalThreadId) {
+          return true;
+        }
+      }
+
+      // Could add Outlook check here if needed
+
+      return false;
+    } catch (error) {
+      console.error('Error checking if on current thread:', error);
+      return false;
     }
   }
 
@@ -549,28 +610,43 @@ class EmailNotesSidebar {
 
   async loadThreadNotes() {
     if (!this.currentThreadId) return;
-    
+
     try {
+      console.log('=== LOAD THREAD NOTES ===');
+      console.log('Loading notes for thread:', this.currentThreadId);
+
       // Show loading state
       this.updateSaveStatus('loading', 'Loading...');
-      
+
+      // Wait for editor to be ready before loading content
+      await this.editorReadyPromise;
+
       // Get note for current thread
       const response = await chrome.runtime.sendMessage({
         action: 'getNote',
         threadId: this.currentThreadId
       });
-      
+
+      console.log('Got response from storage:', {
+        hasNote: !!response.note,
+        contentLength: response.note?.content?.length || 0,
+        threadId: this.currentThreadId
+      });
+
       const lastUpdated = document.getElementById('lastUpdated');
-      
+
       if (response.note) {
         // Load content into Milkdown editor
         const content = response.note.content || '';
+        console.log('📝 Loading content into editor:', content.substring(0, 50) + '...');
+
         if (!this.currentOriginalThreadId && response.note.originalThreadId) {
           this.currentOriginalThreadId = response.note.originalThreadId;
         }
 
         if (this.milkdownEditor) {
-          // Set markdown content in Milkdown
+          // Set markdown content in Milkdown (editor is guaranteed to be ready now)
+          console.log('Calling setMarkdown with content...');
           await this.milkdownEditor.setMarkdown(content);
 
           // Force editor visibility and layout refresh
@@ -597,8 +673,11 @@ class EmailNotesSidebar {
           this.updateSaveStatus('ready', 'Ready');
         }, 1000);
       } else {
+        console.log('📭 No note found for this thread - clearing editor');
         if (this.milkdownEditor) {
+          console.log('Calling setMarkdown with empty string...');
           await this.milkdownEditor.setMarkdown('');
+          console.log('Editor cleared');
         } else if (this.fallbackEditor) {
           this.fallbackEditor.value = '';
         }
@@ -675,28 +754,31 @@ class EmailNotesSidebar {
       return;
     }
 
+    console.log('🔍 Filtering notes. Total notes:', this.allNotes.length);
+    console.log('Current filters:', {
+      platform: this.currentPlatform,
+      account: this.currentAccount,
+      accountEmail: this.currentAccountEmail
+    });
+
     // Get current filter values
     const searchTerm = document.getElementById('notesSearchInput').value.toLowerCase();
     const sortFilter = document.getElementById('sortFilter').value;
-    
+
     // Determine current platform for filtering
     const currentPlatform = this.currentPlatform ? this.currentPlatform.toLowerCase() : null;
 
     // Filter notes
     let filteredNotes = this.allNotes.filter(([threadId, noteData]) => {
-      // Platform filter - only show notes for current platform
+      // Platform filter - only show notes for current platform (Gmail vs Outlook)
       if (currentPlatform && noteData.platform !== currentPlatform) {
+        console.log('  ❌ Filtering out (wrong platform):', threadId, noteData.platform, '!==', currentPlatform);
         return false;
       }
 
-      // Account filter - only show notes for current account
+      // Account filter - only show notes for current Gmail account (e.g., account 0 vs account 1)
       if (this.currentAccount && noteData.account !== this.currentAccount) {
-        return false;
-      }
-
-      // Alternative account filtering using accountEmail if available
-      if (this.currentAccountEmail && noteData.accountEmail && 
-          noteData.accountEmail !== this.currentAccountEmail) {
+        console.log('  ❌ Filtering out (wrong account):', threadId, noteData.account, '!==', this.currentAccount);
         return false;
       }
 
@@ -707,7 +789,7 @@ class EmailNotesSidebar {
           noteData.subject || '',
           noteData.accountEmail || ''
         ].join(' ').toLowerCase();
-        
+
         if (!searchableText.includes(searchTerm)) {
           return false;
         }
@@ -715,6 +797,8 @@ class EmailNotesSidebar {
 
       return true;
     });
+
+    console.log('📊 After filtering:', filteredNotes.length, 'notes');
 
     // Sort notes
     filteredNotes.sort((a, b) => {
@@ -736,7 +820,7 @@ class EmailNotesSidebar {
 
     // Display filtered notes
     if (filteredNotes.length === 0) {
-      this.showNoFilterResultsState(searchTerm, currentPlatform);
+      this.showNoFilterResultsState(searchTerm);
     } else {
       this.displayAllNotes(filteredNotes);
     }
@@ -768,14 +852,12 @@ class EmailNotesSidebar {
     `;
   }
 
-  showNoFilterResultsState(searchTerm, currentPlatform) {
+  showNoFilterResultsState(searchTerm) {
     const notesContent = document.querySelector('#allNotesView .notes-content');
-    
+
     let filterDescription = 'Try adjusting your search.';
     if (searchTerm) {
       filterDescription = `No notes found matching "${searchTerm}".`;
-    } else {
-      filterDescription = 'No notes found for this email platform.';
     }
 
     notesContent.innerHTML = `
@@ -1030,52 +1112,81 @@ class EmailNotesSidebar {
   }
 
   async openThread(threadId, platform, originalThreadId) {
+    console.log('=== OPEN THREAD DEBUG ===');
     console.log('openThread called with:', { threadId, platform, originalThreadId });
+    console.log('Current state:', {
+      currentThreadId: this.currentThreadId,
+      currentView: this.currentView,
+      manualThreadSelection: this.manualThreadSelection
+    });
 
-    // If this is the current thread, just switch to thread view
-    if (threadId === this.currentThreadId) {
-      this.switchToThreadView();
-      return;
-    }
+    // Don't skip navigation - always navigate to the thread
+    // User clicked "open thread" button, so they want to go there
 
     try {
       // Normalize platform to lowercase for comparison
       const platformLower = (platform || 'gmail').toLowerCase();
+      console.log('Platform (normalized):', platformLower);
+
+      // Robust extraction of account index and original thread ID from internal format
+      // Format: platform_account_X_originalThreadId (e.g., gmail_account_0_abc123)
+      let accountIndex = '0';
+      let extractedOriginalThreadId = originalThreadId;
+
+      console.log('Initial values:', { accountIndex, extractedOriginalThreadId });
+
+      if (threadId && threadId.includes('_account_')) {
+        const match = threadId.match(/^(\w+)_account_(\d+)_(.+)$/);
+        console.log('Regex match result:', match);
+        if (match) {
+          accountIndex = match[2];
+          extractedOriginalThreadId = extractedOriginalThreadId || match[3];
+          console.log('Extracted from threadId:', { accountIndex, extractedOriginalThreadId });
+        }
+      }
 
       // Construct the appropriate URL based on platform
       let targetUrl;
 
       if (platformLower === 'gmail') {
-        // Extract account index from threadId if available
-        const accountMatch = threadId.match(/gmail_account_(\d+)_/);
-        const accountIndex = accountMatch ? accountMatch[1] : '0';
-        targetUrl = `https://mail.google.com/mail/u/${accountIndex}/#inbox/${originalThreadId}`;
-        console.log('Gmail URL constructed:', { accountIndex, originalThreadId, targetUrl });
-      } else if (platformLower === 'outlook') {
-        // For Outlook, try to construct the specific thread URL
-        // Outlook URLs follow pattern: https://outlook.office365.com/mail/inbox/id/{threadId}
-        if (originalThreadId && originalThreadId.length > 10) {
-          targetUrl = `https://outlook.office365.com/mail/inbox/id/${originalThreadId}`;
+        if (extractedOriginalThreadId) {
+          targetUrl = `https://mail.google.com/mail/u/${accountIndex}/#inbox/${extractedOriginalThreadId}`;
+          console.log('✅ Gmail URL constructed:', targetUrl);
+          console.log('  - Account Index:', accountIndex);
+          console.log('  - Thread ID:', extractedOriginalThreadId);
         } else {
-          targetUrl = `https://outlook.office365.com/mail/inbox`;
+          // Fallback to inbox if we can't construct specific thread URL
+          targetUrl = `https://mail.google.com/mail/u/${accountIndex}/#inbox`;
+          console.warn('⚠️ Could not extract Gmail thread ID, falling back to inbox:', targetUrl);
         }
-        console.log('Outlook URL constructed:', { originalThreadId, targetUrl });
+      } else if (platformLower === 'outlook') {
+        if (extractedOriginalThreadId && extractedOriginalThreadId.length > 10) {
+          targetUrl = `https://outlook.office365.com/mail/inbox/id/${extractedOriginalThreadId}`;
+          console.log('✅ Outlook URL constructed:', targetUrl);
+        } else {
+          // Fallback to inbox if thread ID is invalid
+          targetUrl = `https://outlook.office365.com/mail/inbox`;
+          console.warn('⚠️ Invalid Outlook thread ID, falling back to inbox:', targetUrl);
+        }
       } else {
-        console.error('Unknown platform:', platform);
+        console.error('❌ Unknown platform:', platform);
         alert('Unknown email platform. Cannot open thread.');
         return;
       }
 
-      console.log('Navigating to thread:', targetUrl);
+      console.log('🚀 FINAL TARGET URL:', targetUrl);
 
       // Navigate to the thread
       const [activeTab] = await chrome.tabs.query({ active: true, currentWindow: true });
       if (activeTab) {
+        console.log('Updating tab:', activeTab.id);
         chrome.tabs.update(activeTab.id, { url: targetUrl });
+      } else {
+        console.error('❌ No active tab found');
       }
 
     } catch (error) {
-      console.error('Error opening thread:', error);
+      console.error('❌ Error opening thread:', error);
       alert('Unable to navigate to thread. Please try again.');
     }
   }
@@ -1297,10 +1408,10 @@ class EmailNotesSidebar {
 
   handleNotesInput() {
     if (!this.currentThreadId) return;
-    
+
     this.setEditorEmptyState(false);
     this.updateSaveStatus('typing', 'Typing...');
-    
+
     // Clear existing timeouts
     if (this.saveTimeout) {
       clearTimeout(this.saveTimeout);
@@ -1308,16 +1419,24 @@ class EmailNotesSidebar {
     if (this.typingTimeout) {
       clearTimeout(this.typingTimeout);
     }
-    
+    if (this.rtlDetectionTimeout) {
+      clearTimeout(this.rtlDetectionTimeout);
+    }
+
     // Set timeout to return to ready state after user stops typing
     this.typingTimeout = setTimeout(() => {
       this.updateSaveStatus('ready', 'Ready');
     }, 2000);
-    
+
     // Set timeout for auto-save (120 seconds to avoid frequent save dialogs)
     this.saveTimeout = setTimeout(() => {
       this.saveCurrentNote();
     }, 120000);
+
+    // Debounce RTL detection - only run after user stops typing for 500ms
+    this.rtlDetectionTimeout = setTimeout(() => {
+      this.detectAndSetTextDirection();
+    }, 500);
   }
 
   async saveCurrentNote() {
@@ -1642,12 +1761,14 @@ class EmailNotesSidebar {
         rootElement = this.fallbackEditor;
       }
 
-      if (!rootElement) return;
+      if (!rootElement) {
+        console.log('RTL: No root element found');
+        return;
+      }
 
       if (!text.trim()) {
         // Reset to auto direction for empty text
-        rootElement.style.direction = 'auto';
-        rootElement.style.textAlign = 'start';
+        rootElement.classList.remove('rtl-content', 'ltr-content');
         return;
       }
 
@@ -1659,14 +1780,48 @@ class EmailNotesSidebar {
       const meaningfulText = text.trim().replace(/^[^\p{L}]+/u, '');
       const firstChar = meaningfulText.charAt(0);
 
+      console.log('RTL Detection:', {
+        hasRtlChars,
+        firstChar,
+        isRtl: hasRtlChars && rtlRegex.test(firstChar)
+      });
+
       if (hasRtlChars && rtlRegex.test(firstChar)) {
         // Text starts with RTL character - set RTL direction
+        console.log('Setting RTL direction');
         rootElement.style.direction = 'rtl';
         rootElement.style.textAlign = 'right';
+
+        // Also set on ProseMirror editor and all paragraphs
+        const pmEditor = rootElement.querySelector('.ProseMirror');
+        if (pmEditor) {
+          pmEditor.style.direction = 'rtl';
+          pmEditor.style.textAlign = 'right';
+
+          // Set on all paragraphs
+          pmEditor.querySelectorAll('p').forEach(p => {
+            p.style.direction = 'rtl';
+            p.style.textAlign = 'right';
+          });
+        }
       } else {
         // Text starts with LTR character or no RTL chars - set LTR direction
+        console.log('Setting LTR direction');
         rootElement.style.direction = 'ltr';
         rootElement.style.textAlign = 'left';
+
+        // Also set on ProseMirror editor
+        const pmEditor = rootElement.querySelector('.ProseMirror');
+        if (pmEditor) {
+          pmEditor.style.direction = 'ltr';
+          pmEditor.style.textAlign = 'left';
+
+          // Set on all paragraphs
+          pmEditor.querySelectorAll('p').forEach(p => {
+            p.style.direction = 'ltr';
+            p.style.textAlign = 'left';
+          });
+        }
       }
     } catch (error) {
       console.error('Error in detectAndSetTextDirection:', error);
@@ -1676,7 +1831,13 @@ class EmailNotesSidebar {
 
   // Initialize Milkdown editor
   async initMilkdownEditor() {
-    console.log('Initializing Milkdown editor...');
+    console.log('🔄 initMilkdownEditor called');
+
+    // Prevent multiple simultaneous initializations
+    if (this.isInitializingEditor) {
+      console.warn('⚠️ Editor initialization already in progress, skipping...');
+      return;
+    }
 
     const editorElement = document.getElementById('quillEditor');
     if (!editorElement) {
@@ -1686,9 +1847,11 @@ class EmailNotesSidebar {
     }
 
     try {
+      this.isInitializingEditor = true;
+
       // Clean up existing editor first to prevent multiple instances
       if (this.milkdownEditor) {
-        console.log('Destroying existing Milkdown editor...');
+        console.log('🗑️ Destroying existing Milkdown editor...');
         await this.milkdownEditor.destroy();
         this.milkdownEditor = null;
       }
@@ -1700,16 +1863,25 @@ class EmailNotesSidebar {
       }
 
       // Clear the container to prevent duplicate divs
+      console.log('🧹 Clearing editor container...');
       editorElement.innerHTML = '';
 
+      // Count existing milkdown divs (for debugging)
+      const existingDivs = document.querySelectorAll('.milkdown');
+      if (existingDivs.length > 0) {
+        console.warn(`⚠️ Found ${existingDivs.length} existing .milkdown divs, removing them...`);
+        existingDivs.forEach(div => div.remove());
+      }
+
       // Initialize Milkdown with onChange handler
+      console.log('✨ Creating new Milkdown editor...');
       this.milkdownEditor = await initMilkdownEditor(
         editorElement,
         '',
         (markdown) => {
           try {
             this.handleNotesInput();
-            this.detectAndSetTextDirection();
+            // RTL detection is now debounced in handleNotesInput()
           } catch (error) {
             console.error('Error in change handler:', error);
           }
@@ -1718,8 +1890,9 @@ class EmailNotesSidebar {
 
       console.log('✅ Milkdown editor initialized successfully');
 
-      // Set up RTL detection observer
-      this.setupRTLObserver();
+      // Don't use RTL observer - it causes performance issues
+      // RTL detection is handled via debounced timeout in handleNotesInput()
+      // this.setupRTLObserver();
 
       // Force a layout refresh to ensure content is visible
       setTimeout(() => {
@@ -1729,9 +1902,23 @@ class EmailNotesSidebar {
         }
       }, 100);
 
+      // Resolve the editor ready promise
+      if (this.resolveEditorReady) {
+        this.resolveEditorReady();
+        console.log('✅ Editor ready promise resolved');
+      }
+
     } catch (error) {
       console.error('❌ Failed to initialize Milkdown editor:', error);
       this.createFallbackEditor();
+      // Still resolve the promise even on failure to avoid hanging
+      if (this.resolveEditorReady) {
+        this.resolveEditorReady();
+      }
+    } finally {
+      // Always reset the initialization flag
+      this.isInitializingEditor = false;
+      console.log('✅ Editor initialization complete');
     }
   }
 

@@ -811,3 +811,117 @@ This breakdown provides clear, actionable development tasks that build toward a 
 
 ### 💡 Recommended Next Action:
 **Start with Phase 4.1 (Archive Overlay Approach)** to clean up the codebase and prepare for future enhancements. This will reduce technical debt and make subsequent development more efficient.
+
+---
+
+## Technical Debt & Known Issues
+
+**Last Updated:** 2025-12-26
+
+### 🚨 Critical Issues
+
+#### RTL (Right-to-Left) Support Limitation
+**Status:** Blocked by Milkdown/ProseMirror architecture
+**Priority:** High
+**Impact:** Hebrew, Arabic users cannot use numbered/bulleted lists properly
+
+**Problem:**
+- RTL text aligns correctly
+- But numbered list markers (1, 2, 3) appear **outside** the editor box on the left margin
+- Text inside lists is properly right-aligned, but markers are inaccessible
+
+**Root Cause:**
+- Milkdown uses ProseMirror which has LTR-first architecture
+- List markers render via `::marker` pseudo-element in browser-controlled margin
+- This margin positioning is not overridable with CSS in RTL contexts
+- ProseMirror's internal layout engine doesn't support RTL list rendering
+
+**Attempted Solutions:** (All Failed)
+1. `list-style-position: inside` - Ignored by ProseMirror
+2. CSS `direction: rtl` on all elements - Text works, lists don't
+3. Custom CSS pseudo-elements with counters - Still render in margin
+4. Aggressive `!important` overrides - No effect on ProseMirror internals
+
+**Recommended Solutions:**
+- **Option A:** Switch to Monaco Editor (excellent RTL, 2-3MB bundle)
+- **Option B:** Switch to plain `<textarea>` (perfect RTL, no markdown)
+- **Option C:** Try Milkdown in popup widget UI (different CSS context)
+
+**References:**
+- `docs/current-issues.md` - Detailed RTL investigation
+- `src/sidebar.js:1743-1829` - RTL detection code
+- `src/sidebar.html:757-814` - Failed CSS attempts
+
+---
+
+### ⚠️ Medium Priority Issues
+
+#### Milkdown Performance with RTL
+**Status:** Fixed with workaround
+**Problem:** RTL detection caused browser lockup on every keystroke
+**Solution:** Debounced detection to 500ms after typing stops
+**Trade-off:** RTL alignment updates have slight delay
+
+#### Extension Context Invalidation
+**Status:** Known limitation
+**Problem:** Extension reload breaks connection between content scripts and sidebar
+**Workaround:** Users must refresh Gmail tab after extension reload
+**Impact:** Development workflow only (not production)
+
+---
+
+### 📋 Future UI Migration Plan
+
+#### Popup Widget Architecture (Planned)
+**Reason for Change:**
+- Current sidebar UI not meeting user expectations
+- Popup widget provides more flexible positioning
+- May resolve RTL issues with different CSS context
+
+**Migration Strategy:**
+1. Keep all current bug fixes in `milkdown-ui-migration` branch
+2. Create new `popup-widget-migration` branch
+3. Try popup + Milkdown first (reuse fixes)
+4. If RTL still broken → switch to Monaco in popup
+5. Preserve all learnings in `/docs/current-issues.md`
+
+**Benefits:**
+- Don't lose 6 major bug fixes completed
+- Can test if popup CSS context fixes RTL
+- Easy fallback to Monaco if needed
+- Incremental migration reduces risk
+
+---
+
+### 🔧 Debug Logging (Temporary)
+
+**Current State:** Extensive console logging added for debugging
+**Location:** Throughout `src/sidebar.js`, `src/gmail-sidebar.js`
+**Examples:**
+- `🔍 detectCurrentThread:` - Thread detection
+- `=== LOAD THREAD NOTES ===` - Note loading
+- `📊 After filtering: X notes` - Filtering logic
+
+**Action Required:** Clean up before production release
+**Note:** Keep strategic comments, remove verbose logs
+
+---
+
+### 📝 Code Quality Notes
+
+**What Works Well:**
+- Sticky note fix (empty string → single space)
+- Editor duplication prevention (retry logic)
+- Smart button labeling (current vs open thread)
+- All Notes filtering (preserve platform/account)
+- Debounced RTL detection (performance fix)
+
+**Architectural Decisions to Preserve:**
+- Editor ready promise pattern
+- Retry logic for async operations
+- Platform/account state management
+- Message flow: Gmail → Background → Sidebar
+
+**References:**
+- All fixes documented in `docs/current-issues.md`
+- Commit history will preserve implementation details   

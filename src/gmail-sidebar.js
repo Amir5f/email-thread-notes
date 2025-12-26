@@ -48,15 +48,22 @@ class GmailSidebarConnector {
 
   detectCurrentThread() {
     if (!this.extensionEnabled) return;
-    
+
     const threadId = this.getThreadIdFromUrl();
     const subject = this.getCurrentThreadSubject();
-    
+
+    console.log('🔍 detectCurrentThread:', {
+      detectedThreadId: threadId,
+      currentThreadId: this.currentThreadId,
+      changed: threadId !== this.currentThreadId,
+      url: window.location.href
+    });
+
     if (threadId && threadId !== this.currentThreadId) {
-      console.log('THREAD CHANGED:', this.currentThreadId, '->', threadId);
+      console.log('✅ THREAD CHANGED:', this.currentThreadId, '->', threadId);
       this.currentThreadId = threadId;
       this.currentSubject = subject;
-      
+
       // Notify sidebar of thread change
       this.notifySidebar('threadChanged', {
         threadId: this.getAccountSpecificThreadId(threadId),

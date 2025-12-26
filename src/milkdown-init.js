@@ -6,13 +6,22 @@ import { Editor, rootCtx, defaultValueCtx, editorViewCtx, commonmark, nord, list
 
 export async function initMilkdownEditor(container, initialContent = '', onChange) {
   try {
-    console.log('Initializing Milkdown editor...');
+    console.log('🚀 initMilkdownEditor() called from milkdown-init.js');
+    console.log('  - Container:', container);
+    console.log('  - Initial content length:', initialContent?.length || 0);
 
     if (!container) {
       throw new Error('Editor container not found');
     }
 
+    // Count existing milkdown instances in this container
+    const existingInstances = container.querySelectorAll('.milkdown');
+    if (existingInstances.length > 0) {
+      console.error(`❌ CRITICAL: Found ${existingInstances.length} existing Milkdown instances! This should not happen.`);
+    }
+
     // Create Milkdown editor
+    console.log('📝 Creating Milkdown Editor instance...');
     const editor = await Editor.make()
       .config((ctx) => {
         ctx.set(rootCtx, container);
@@ -30,7 +39,15 @@ export async function initMilkdownEditor(container, initialContent = '', onChang
       .use(listener)
       .create();
 
-    console.log('✅ Milkdown editor initialized successfully');
+    console.log('✅ Milkdown editor created successfully');
+
+    // Verify the editor was created
+    const milkdownDiv = container.querySelector('.milkdown');
+    if (milkdownDiv) {
+      console.log('✅ .milkdown div found in container');
+    } else {
+      console.error('❌ .milkdown div NOT found after creation!');
+    }
 
     return {
       editor,
@@ -55,18 +72,38 @@ export async function initMilkdownEditor(container, initialContent = '', onChang
       // Set markdown content
       async setMarkdown(markdown) {
         try {
-          await editor.action((ctx) => {
-            const view = ctx.get(editorViewCtx);
-            const state = view.state;
-            const tr = state.tr.replaceWith(0, state.doc.content.size,
-              state.schema.text(markdown || ''));
-            view.dispatch(tr);
-          });
+          // Wait for editor to be fully ready with retry logic
+          let retries = 0;
+          const maxRetries = 10;
+
+          // Milkdown doesn't allow empty text nodes - use single space for empty content
+          const content = markdown && markdown.trim() ? markdown : ' ';
+
+          while (retries < maxRetries) {
+            try {
+              await editor.action((ctx) => {
+                const view = ctx.get(editorViewCtx);
+                const state = view.state;
+                const tr = state.tr.replaceWith(0, state.doc.content.size,
+                  state.schema.text(content));
+                view.dispatch(tr);
+              });
+              console.log('✅ Markdown content set successfully');
+              return; // Success!
+            } catch (error) {
+              if (retries < maxRetries - 1) {
+                // Wait and retry
+                await new Promise(resolve => setTimeout(resolve, 50));
+                retries++;
+                console.log(`⏳ Retry ${retries}/${maxRetries} setting markdown...`);
+              } else {
+                throw error; // Final retry failed
+              }
+            }
+          }
         } catch (error) {
-          console.error('Error setting markdown:', error);
-          // Fallback: destroy and recreate
-          await this.destroy();
-          return await initMilkdownEditor(container, markdown, onChange);
+          console.error('❌ Error setting markdown after retries:', error);
+          console.warn('⚠️ Editor may not be ready - content may not display correctly');
         }
       },
 

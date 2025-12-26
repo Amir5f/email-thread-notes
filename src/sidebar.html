@@ -753,6 +753,70 @@
     ::-webkit-scrollbar-thumb:hover {
       background: #9ca3af;
     }
+
+    /* RTL Support for Milkdown Editor */
+    .milkdown.rtl-content,
+    .milkdown.rtl-content .ProseMirror {
+      direction: rtl !important;
+      text-align: right !important;
+    }
+
+    .milkdown.rtl-content .ProseMirror p,
+    .milkdown.rtl-content .ProseMirror h1,
+    .milkdown.rtl-content .ProseMirror h2,
+    .milkdown.rtl-content .ProseMirror h3,
+    .milkdown.rtl-content .ProseMirror h4,
+    .milkdown.rtl-content .ProseMirror h5,
+    .milkdown.rtl-content .ProseMirror h6 {
+      direction: rtl !important;
+      text-align: right !important;
+    }
+
+    /* Critical fix for RTL lists - hide default markers and use pseudo-elements */
+    .milkdown.rtl-content .ProseMirror ol,
+    .milkdown.rtl-content .ProseMirror ul {
+      direction: rtl !important;
+      text-align: right !important;
+      padding-right: 0 !important;
+      padding-left: 0 !important;
+      margin-right: 0 !important;
+      margin-left: 0 !important;
+      list-style: none !important;
+    }
+
+    .milkdown.rtl-content .ProseMirror li {
+      direction: rtl !important;
+      text-align: right !important;
+      padding-right: 30px !important;
+      padding-left: 0 !important;
+      position: relative !important;
+    }
+
+    /* Add numbers as pseudo-elements for ordered lists */
+    .milkdown.rtl-content .ProseMirror ol {
+      counter-reset: list-counter !important;
+    }
+
+    .milkdown.rtl-content .ProseMirror ol li::before {
+      content: counter(list-counter) ". " !important;
+      counter-increment: list-counter !important;
+      position: absolute !important;
+      right: 0 !important;
+      direction: rtl !important;
+    }
+
+    /* Add bullets as pseudo-elements for unordered lists */
+    .milkdown.rtl-content .ProseMirror ul li::before {
+      content: "• " !important;
+      position: absolute !important;
+      right: 0 !important;
+      direction: rtl !important;
+    }
+
+    .milkdown.ltr-content .ProseMirror {
+      direction: ltr !important;
+      text-align: left !important;
+    }
   </style>
 </head>
 <body>
@@ -829,7 +893,7 @@
               <path d="M7 17L17 7" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round"></path>
               <polyline points="11,7 17,7 17,13" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round"></polyline>
             </svg>
-            Open thread
+            <span class="button-text">Open thread</span>
           </button>
         </div>
         <div class="thread-details" id="threadDetails">Gmail • Account 1</div>
