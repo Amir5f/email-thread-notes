@@ -358,14 +358,29 @@ const storageManager = new EmailNotesStorage();
 chrome.runtime.onInstalled.addListener(async (details) => {
   console.log('Email Thread Notes extension installed/updated');
 
-  // Enable side panel for supported email domains
-  chrome.sidePanel.setPanelBehavior({ openPanelOnActionClick: true })
-    .catch((error) => console.error('Failed to set side panel behavior:', error));
+  // Set global side panel behavior - enable by default
+  await chrome.sidePanel.setPanelBehavior({ openPanelOnActionClick: true });
+
+  // Set default panel path globally (not per-tab)
+  await chrome.sidePanel.setOptions({
+    path: 'src/sidebar.html',
+    enabled: true
+  });
+
+  console.log('Side panel configured globally');
 });
 
 // Handle extension icon click to open side panel
-chrome.action.onClicked.addListener((tab) => {
-  console.log('Extension icon clicked - side panel should open automatically');
+chrome.action.onClicked.addListener(async (tab) => {
+  console.log('Extension icon clicked on tab:', tab.id, 'URL:', tab.url);
+
+  // Explicitly open the side panel for this tab
+  try {
+    await chrome.sidePanel.open({ tabId: tab.id });
+    console.log('Side panel opened successfully');
+  } catch (error) {
+    console.error('Failed to open side panel:', error);
+  }
 });
 
 // Listen for tab updates to manage sidebar visibility
@@ -375,17 +390,26 @@ chrome.tabs.onUpdated.addListener((tabId, changeInfo, tab) => {
   }
 });
 
-chrome.tabs.onActivated.addListener((activeInfo) => {
-  chrome.tabs.get(activeInfo.tabId, (tab) => {
+chrome.tabs.onActivated.addListener(async (activeInfo) => {
+  try {
+    const tab = await chrome.tabs.get(activeInfo.tabId);
     if (tab.url) {
       handleTabUrlChange(activeInfo.tabId, tab.url);
     }
-  });
+  } catch (error) {
+    console.log('Error getting tab info:', error);
+  }
 });
 
-function handleTabUrlChange(tabId, url) {
-  // Simplified - no platform restrictions for now
-  console.log('Tab URL changed, side panel remains available');
+async function handleTabUrlChange(tabId, url) {
+  const emailSitePattern = /mail\.google\.com|outlook\.(office365|office|live)\.com/;
+  const isEmailSite = emailSitePattern.test(url);
+
+  console.log('Tab URL changed:', url, '- Email site:', isEmailSite);
+
+  // Don't use per-tab enable/disable - it breaks the click-to-open behavior
+  // Instead, we'll just let the user manually close the panel on non-email sites
+  // The panel will still only show useful data when on email sites
 }
 
 // Handle messages from content scripts

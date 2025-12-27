@@ -50,6 +50,17 @@ class EmailNotesSidebar {
       this.switchToAllNotesView();
     });
 
+    // Make entire editor container clickable to focus editor
+    const editorContainer = document.getElementById('quillEditor');
+    if (editorContainer) {
+      editorContainer.addEventListener('click', (e) => {
+        // Focus editor when clicking anywhere in the container (not on buttons)
+        if (!e.target.closest('button')) {
+          this.focusEditor();
+        }
+      });
+    }
+
     // Initialize Milkdown editor after DOM is ready
     setTimeout(async () => {
       try {
@@ -1428,10 +1439,10 @@ class EmailNotesSidebar {
       this.updateSaveStatus('ready', 'Ready');
     }, 2000);
 
-    // Set timeout for auto-save (120 seconds to avoid frequent save dialogs)
+    // Set timeout for auto-save (1 second - very fast!)
     this.saveTimeout = setTimeout(() => {
       this.saveCurrentNote();
-    }, 120000);
+    }, 1000);
 
     // Debounce RTL detection - only run after user stops typing for 500ms
     this.rtlDetectionTimeout = setTimeout(() => {
@@ -1746,6 +1757,24 @@ class EmailNotesSidebar {
   hideSettingsStatus() {
     const statusElement = document.getElementById('settingsStatus');
     statusElement.style.display = 'none';
+  }
+
+  focusEditor() {
+    try {
+      if (this.milkdownEditor && this.milkdownEditor.focus) {
+        this.milkdownEditor.focus();
+      } else if (this.fallbackEditor) {
+        this.fallbackEditor.focus();
+      } else {
+        // Try to find ProseMirror editor directly
+        const prosemirror = document.querySelector('.ProseMirror');
+        if (prosemirror) {
+          prosemirror.focus();
+        }
+      }
+    } catch (error) {
+      console.log('Could not focus editor:', error);
+    }
   }
 
   detectAndSetTextDirection() {

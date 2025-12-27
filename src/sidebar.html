@@ -260,28 +260,48 @@
     /* Editor */
     #quillEditor {
       flex: 1;
-      padding: 12px 14px;
-      border-radius: 12px;
+      padding: 16px;
+      border-radius: 0;
       background: #ffffff;
-      border: 1px solid transparent;
-      transition: border-color 0.2s ease, box-shadow 0.2s ease;
-      animation: fadeIn 0.6s ease 0.2s both;
+      border: none;
       overflow-y: auto;
+      cursor: text;
+      position: relative;
     }
 
     #quillEditor:focus-within {
-      border-color: #c4c6f5;
-      box-shadow: 0 0 0 1px #c4c6f5;
+      outline: none;
     }
 
     #quillEditor.editor-empty {
-      border: 1px dashed #d4d8e3;
-      background: #fcfdff;
+      background: #fafbfc;
+    }
+
+    /* Show helpful placeholder when editor is empty */
+    #quillEditor.editor-empty::before {
+      content: "Click anywhere to start writing your note...";
+      color: #9ca3af;
+      font-size: 14px;
+      position: absolute;
+      top: 50%;
+      left: 50%;
+      transform: translate(-50%, -50%);
+      pointer-events: none;
+      text-align: center;
+      width: 80%;
     }
 
     .milkdown {
       outline: none !important;
-      min-height: 300px;
+      min-height: 400px; /* Increased from 300px */
+      cursor: text;
+    }
+
+    /* Make ProseMirror editor more clickable */
+    .ProseMirror {
+      min-height: 400px;
+      cursor: text;
+      padding: 8px 0;
     }
 
     /* Milkdown custom styles */
