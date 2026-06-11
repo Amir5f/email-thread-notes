@@ -2,6 +2,8 @@
 
 A privacy-focused Chrome extension that allows users to attach private, persistent notes to email threads in Gmail using Chrome's Side Panel API.
 
+<img src="screenshot1.png" width="1000"/>
+
 ## ✨ Features
 
 - **Gmail Integration**: Add private notes to Gmail conversations (conversation view only)
