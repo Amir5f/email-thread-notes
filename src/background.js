@@ -155,6 +155,30 @@ class EmailNotesStorage {
     }
   }
 
+  // Restore a previously deleted note verbatim (used for undo-delete).
+  // noteData must be an object with at least `content` and `threadId`.
+  async restoreNote(threadId, noteData) {
+    try {
+      if (!noteData || typeof noteData !== 'object' || !noteData.content || !noteData.threadId) {
+        return { success: false, error: 'Invalid note data' };
+      }
+
+      const storageKey = `${this.storagePrefix}${threadId}`;
+
+      // Write verbatim — no timestamp changes, no merging
+      await chrome.storage.sync.set({ [storageKey]: noteData });
+
+      console.log('Background: Note restored for threadId:', threadId);
+
+      await this.updateMetadata(threadId, noteData);
+
+      return { success: true };
+    } catch (error) {
+      console.error('Background: Error restoring note for threadId:', threadId, error);
+      return { success: false, error: error.message };
+    }
+  }
+
   // Get all notes
   async getAllNotes() {
     try {
@@ -507,6 +531,11 @@ chrome.runtime.onMessage.addListener((request, _sender, sendResponse) => {
         case 'updateNoteFields':
           const updateResult = await storageManager.updateNoteFields(request.threadId, request.fields || {});
           sendResponse(updateResult);
+          break;
+
+        case 'restoreNote':
+          const restoreResult = await storageManager.restoreNote(request.threadId, request.noteData);
+          sendResponse(restoreResult);
           break;
 
         case 'getAllNotes':

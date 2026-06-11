@@ -852,6 +852,46 @@
       direction: ltr !important;
       text-align: left !important;
     }
+
+    /* Undo toast */
+    .undo-toast {
+      position: fixed;
+      bottom: 16px;
+      left: 50%;
+      transform: translateX(-50%);
+      background: var(--bg-panel);
+      border: 1px solid var(--border-color);
+      border-radius: 10px;
+      padding: 10px 14px;
+      font-size: 13px;
+      color: var(--text-main);
+      box-shadow: 0 4px 16px rgba(0, 0, 0, 0.45);
+      z-index: 10003;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      max-width: calc(100% - 32px);
+    }
+
+    .undo-toast button.undo-btn {
+      background: transparent;
+      color: var(--accent-color);
+      border: none;
+      font-weight: 600;
+      cursor: pointer;
+      padding: 4px 8px;
+      border-radius: 6px;
+      font-size: 13px;
+      font-family: inherit;
+    }
+
+    .undo-toast button.undo-btn:hover {
+      background: var(--bg-hover);
+    }
+
+    .undo-toast.error {
+      border-color: #f87171;
+    }
   </style>
 </head>
 <body>
@@ -1015,6 +1055,8 @@
       </div>
     </div>
   </div>
+
+  <div id="undoToast" class="undo-toast" role="status" aria-live="polite" style="display: none;"></div>
 
   <!-- Load sidebar module (now using bundled Milkdown, no import map needed) -->
   <script type="module" src="sidebar.js"></script>

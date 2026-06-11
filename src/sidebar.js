@@ -1486,7 +1486,7 @@ class EmailNotesSidebar {
         }
       } else {
         console.error('❌ Unknown platform:', platform);
-        alert('Unknown email platform. Cannot open thread.');
+        this.showUndoToast('Unknown email platform. Cannot open thread.', null, { isError: true });
         return;
       }
 
@@ -1503,7 +1503,7 @@ class EmailNotesSidebar {
 
     } catch (error) {
       console.error('❌ Error opening thread:', error);
-      alert('Unable to navigate to thread. Please try again.');
+      this.showUndoToast('Unable to navigate to thread. Please try again.', null, { isError: true });
     }
   }
 
@@ -1689,6 +1689,20 @@ class EmailNotesSidebar {
 
       if (response && response.success) {
         this.loadAllNotesView();
+
+        // Show undo toast only when archiving (not unarchiving, not pinning)
+        if (action === 'archive' && fields.archived === true) {
+          this.showUndoToast('Note archived', async () => {
+            const undoResp = await chrome.runtime.sendMessage({
+              action: 'updateNoteFields',
+              threadId,
+              fields: { archived: false }
+            });
+            if (undoResp && undoResp.success) {
+              this.loadAllNotesView();
+            }
+          });
+        }
       } else {
         console.error('Failed to update note fields:', response?.error);
       }
@@ -1699,48 +1713,53 @@ class EmailNotesSidebar {
 
   async deleteNoteFromList(noteItem) {
     const threadId = noteItem.getAttribute('data-thread-id');
-    
+
     if (!threadId) {
       console.error('No thread ID found for note item');
       return;
     }
 
-    // Show confirmation dialog
-    const confirmed = confirm('Are you sure you want to delete this note? This action cannot be undone.');
-    if (!confirmed) return;
+    // Keep note data for potential restore
+    const savedNote = noteItem._noteData || null;
 
     try {
       console.log('Deleting note with thread ID:', threadId);
-      
+
       const response = await chrome.runtime.sendMessage({
         action: 'deleteNote',
-        threadId: threadId
+        threadId
       });
 
       if (response.success) {
         console.log('Note deleted successfully from list view');
-        
+
         // Remove the item from the list with animation
         noteItem.style.transition = 'all 0.3s ease';
         noteItem.style.opacity = '0';
         noteItem.style.transform = 'translateX(-20px)';
-        
+
         setTimeout(() => {
-          // Reload all notes to get fresh data
           this.loadAllNotesView();
-          
-          // Also refresh current thread view if it's the same note
-          if (threadId === this.currentThreadId && this.currentView === 'thread') {
-            this.loadThreadNotes();
-          }
         }, 300);
+
+        // Show undo toast if we have data to restore
+        if (savedNote) {
+          this.showUndoToast('Note deleted', async () => {
+            const restoreResp = await chrome.runtime.sendMessage({
+              action: 'restoreNote',
+              threadId,
+              noteData: savedNote
+            });
+            if (restoreResp && restoreResp.success) {
+              this.loadAllNotesView();
+            }
+          });
+        }
       } else {
         console.error('Failed to delete note:', response.error);
-        alert('Failed to delete note. Please try again.');
       }
     } catch (error) {
       console.error('Error deleting note from list:', error);
-      alert('Error deleting note. Please try again.');
     }
   }
 
@@ -1986,19 +2005,25 @@ class EmailNotesSidebar {
 
   async deleteCurrentNote() {
     if (!this.currentThreadId) return;
-    
-    // Show confirmation dialog
-    const confirmed = confirm('Are you sure you want to delete this note? This action cannot be undone.');
-    if (!confirmed) return;
-    
+
+    // Snapshot the thread ID and current view before the async gap
+    const threadId = this.currentThreadId;
+
     try {
+      // Fetch the full note before deleting so we can restore it on undo
+      const getNoteResponse = await chrome.runtime.sendMessage({
+        action: 'getNote',
+        threadId
+      });
+      const savedNote = getNoteResponse && getNoteResponse.note ? getNoteResponse.note : null;
+
       this.updateSaveStatus('saving', 'Deleting...');
-      
+
       const response = await chrome.runtime.sendMessage({
         action: 'deleteNote',
-        threadId: this.currentThreadId
+        threadId
       });
-      
+
       if (response.success) {
         // Clear the editor
         if (this.milkdownEditor) {
@@ -2023,9 +2048,31 @@ class EmailNotesSidebar {
           this.updateSaveStatus('ready', 'Ready');
         }, 2000);
 
-        // Refresh all notes view if it's currently shown
-        if (this.currentView === 'all') {
+        // Refresh all notes list
+        if (this.allNotes) {
           this.loadAllNotesView();
+        }
+
+        // Show undo toast if we have note data to restore
+        if (savedNote) {
+          this.showUndoToast('Note deleted', async () => {
+            const restoreResp = await chrome.runtime.sendMessage({
+              action: 'restoreNote',
+              threadId,
+              noteData: savedNote
+            });
+            if (restoreResp && restoreResp.success) {
+              // Reload the thread view if we're still looking at the same thread
+              if (this.currentView === 'thread' && this.currentThreadId === threadId) {
+                await this.loadThreadNotes();
+                this.updateArchiveButtonState(true, !!savedNote.archived);
+              }
+              // Always refresh the list
+              if (this.allNotes) {
+                this.loadAllNotesView();
+              }
+            }
+          });
         }
       } else {
         this.updateSaveStatus('error', 'Delete failed');
@@ -2081,11 +2128,14 @@ class EmailNotesSidebar {
   async toggleArchiveCurrentNote() {
     if (!this.currentThreadId) return;
 
+    const threadId = this.currentThreadId;
+    const wasArchived = this.currentNoteArchived;
+
     try {
       const response = await chrome.runtime.sendMessage({
         action: 'updateNoteFields',
-        threadId: this.currentThreadId,
-        fields: { archived: !this.currentNoteArchived }
+        threadId,
+        fields: { archived: !wasArchived }
       });
 
       if (response && response.success) {
@@ -2095,6 +2145,24 @@ class EmailNotesSidebar {
         // Refresh All Notes data if loaded
         if (this.allNotes) {
           this.loadAllNotesView();
+        }
+
+        // Show undo toast only when the note was just archived
+        if (this.currentNoteArchived) {
+          this.showUndoToast('Note archived', async () => {
+            const undoResp = await chrome.runtime.sendMessage({
+              action: 'updateNoteFields',
+              threadId,
+              fields: { archived: false }
+            });
+            if (undoResp && undoResp.success) {
+              this.currentNoteArchived = false;
+              this.updateArchiveButtonState(true, false);
+              if (this.allNotes) {
+                this.loadAllNotesView();
+              }
+            }
+          });
         }
       } else {
         console.error('Failed to update archive state:', response?.error);
@@ -2245,6 +2313,52 @@ class EmailNotesSidebar {
   hideSettingsStatus() {
     const statusElement = document.getElementById('settingsStatus');
     statusElement.style.display = 'none';
+  }
+
+  // Single-instance undo toast. If a toast is already visible the previous
+  // one is dismissed (without running its undo callback) before the new one
+  // appears.
+  showUndoToast(message, onUndo = null, { duration = 5000, isError = false } = {}) {
+    this.hideUndoToast();
+
+    const toast = document.getElementById('undoToast');
+    if (!toast) return;
+
+    // Clear previous content
+    toast.innerHTML = '';
+    toast.className = 'undo-toast' + (isError ? ' error' : '');
+
+    const msgSpan = document.createElement('span');
+    msgSpan.textContent = message;
+    toast.appendChild(msgSpan);
+
+    if (onUndo) {
+      const undoBtn = document.createElement('button');
+      undoBtn.className = 'undo-btn';
+      undoBtn.textContent = 'Undo';
+      undoBtn.addEventListener('click', () => {
+        this.hideUndoToast();
+        onUndo();
+      });
+      toast.appendChild(undoBtn);
+    }
+
+    toast.style.display = 'flex';
+
+    this._undoToastTimer = setTimeout(() => {
+      this.hideUndoToast();
+    }, duration);
+  }
+
+  hideUndoToast() {
+    if (this._undoToastTimer) {
+      clearTimeout(this._undoToastTimer);
+      this._undoToastTimer = null;
+    }
+    const toast = document.getElementById('undoToast');
+    if (toast) {
+      toast.style.display = 'none';
+    }
   }
 
   focusEditor() {
