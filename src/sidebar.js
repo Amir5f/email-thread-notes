@@ -8,6 +8,7 @@ class EmailNotesSidebar {
     this.currentView = 'all'; // 'thread' or 'all'
     this.manualThreadSelection = false;
     this.currentOriginalThreadId = null;
+    this.currentLastEmailSeen = null;
     this.saveTimeout = null;
     this.milkdownEditor = null; // Milkdown editor instance
     this.rtlObserver = null; // MutationObserver for RTL detection
@@ -272,7 +273,8 @@ class EmailNotesSidebar {
           message.subject,
           message.account,
           message.accountEmail,
-          message.originalThreadId
+          message.originalThreadId,
+          message.lastEmailSeen
         );
         sendResponse({ success: true });
       } else if (message.action === 'platformChanged') {
@@ -331,7 +333,8 @@ class EmailNotesSidebar {
               response.subject,
               response.account,
               response.accountEmail,
-              response.originalThreadId
+              response.originalThreadId,
+              response.lastEmailSeen
             );
           } else {
             this.handleNoThread();
@@ -358,7 +361,7 @@ class EmailNotesSidebar {
     this.switchToAllNotesView();
   }
 
-  handleThreadChange(threadId, platform, subject, account, accountEmail, originalThreadId) {
+  handleThreadChange(threadId, platform, subject, account, accountEmail, originalThreadId, lastEmailSeen) {
     this.manualThreadSelection = false;
     const wasThreadView = this.currentView === 'thread';
     const previousThreadId = this.currentThreadId;
@@ -374,8 +377,12 @@ class EmailNotesSidebar {
     this.currentAccount = account;
     this.currentAccountEmail = accountEmail;
     this.currentOriginalThreadId = originalThreadId || (threadId ? threadId.split('_').pop() : null);
-    
+    this.currentLastEmailSeen = lastEmailSeen ?? null;
+
     if (threadId) {
+      // Persist newest-email timestamp for existing notes (fire-and-forget)
+      this.maybeUpdateLastEmailSeen(threadId, this.currentLastEmailSeen);
+
       // Update thread info display
       this.updateThreadInfo(threadId, platform, subject, account, accountEmail);
       
@@ -400,6 +407,35 @@ class EmailNotesSidebar {
     }
 
     this.updateNewNoteButton();
+  }
+
+  // Persist the newest-email timestamp onto an EXISTING note for this thread.
+  // Only updates when the scraped value is newer than what's stored. We never
+  // create a note here (saveCurrentNote handles new notes) and never trigger a
+  // list re-render. Fails silently (console.debug) so scraping issues never
+  // affect the rest of the UI.
+  async maybeUpdateLastEmailSeen(threadId, lastEmailSeen) {
+    if (!threadId || !lastEmailSeen) return;
+
+    try {
+      const response = await chrome.runtime.sendMessage({
+        action: 'getNote',
+        threadId
+      });
+
+      const note = response && response.note;
+      if (!note) return; // only track threads that already have a note
+
+      if (lastEmailSeen > (note.lastEmailSeen || 0)) {
+        await chrome.runtime.sendMessage({
+          action: 'updateNoteFields',
+          threadId,
+          fields: { lastEmailSeen }
+        });
+      }
+    } catch (error) {
+      console.debug('maybeUpdateLastEmailSeen failed:', error && error.message);
+    }
   }
 
 
@@ -1964,6 +2000,12 @@ class EmailNotesSidebar {
 
       if (response.success) {
         this.updateSaveStatus('saved', 'Saved');
+
+        // A note now exists for this thread; persist the newest-email
+        // timestamp if we have one (fire-and-forget, no list re-render).
+        if (this.currentLastEmailSeen) {
+          this.maybeUpdateLastEmailSeen(this.currentThreadId, this.currentLastEmailSeen);
+        }
 
         // Update last modified timestamp
         const lastUpdated = document.getElementById('lastUpdated');

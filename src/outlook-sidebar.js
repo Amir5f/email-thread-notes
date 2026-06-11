@@ -7,6 +7,8 @@ class OutlookSidebarConnector {
     this.currentAccountEmail = null;
     this.currentPlatform = this.detectPlatform();
     this.extensionEnabled = true;
+    this._tsLogged = false; // throttle timestamp-scrape failure logging (reset per thread)
+    this._tsRetryTimeout = null; // pending lazy-render retry for timestamp scrape
     this.init();
   }
 
@@ -66,7 +68,16 @@ class OutlookSidebarConnector {
       console.log('OUTLOOK THREAD CHANGED:', this.currentThreadId, '->', threadId);
       this.currentThreadId = threadId;
       this.currentSubject = subject;
-      
+
+      // Reset per-thread timestamp logging and cancel any pending retry
+      this._tsLogged = false;
+      if (this._tsRetryTimeout) {
+        clearTimeout(this._tsRetryTimeout);
+        this._tsRetryTimeout = null;
+      }
+
+      const lastEmailSeen = this.getLastEmailTimestamp();
+
       // Notify sidebar of thread change
       this.notifySidebar('threadChanged', {
         threadId: this.getAccountSpecificThreadId(threadId),
@@ -74,23 +85,47 @@ class OutlookSidebarConnector {
         platform: 'outlook',
         subject: subject,
         account: this.currentAccount,
-        accountEmail: this.currentAccountEmail
+        accountEmail: this.currentAccountEmail,
+        lastEmailSeen: lastEmailSeen
       });
-      
+
+      // Outlook also renders conversations lazily; if the scrape came back
+      // empty, retry once after a short delay and send a follow-up if it
+      // succeeds and we're still on the same thread.
+      if (lastEmailSeen === null) {
+        this._tsRetryTimeout = setTimeout(() => {
+          this._tsRetryTimeout = null;
+          if (this.currentThreadId !== threadId) return;
+          const retryTs = this.getLastEmailTimestamp();
+          if (retryTs !== null && this.currentThreadId === threadId) {
+            this.notifySidebar('threadChanged', {
+              threadId: this.getAccountSpecificThreadId(threadId),
+              originalThreadId: threadId,
+              platform: 'outlook',
+              subject: this.currentSubject,
+              account: this.currentAccount,
+              accountEmail: this.currentAccountEmail,
+              lastEmailSeen: retryTs
+            });
+          }
+        }, 1500);
+      }
+
     } else if (threadId && threadId === this.currentThreadId && subject !== this.currentSubject) {
       // Same thread but subject changed (page loaded more content)
       console.log('OUTLOOK SUBJECT UPDATED:', this.currentSubject, '->', subject);
       this.currentSubject = subject;
-      
+
       this.notifySidebar('threadChanged', {
         threadId: this.getAccountSpecificThreadId(threadId),
         originalThreadId: threadId,
         platform: 'outlook',
         subject: subject,
         account: this.currentAccount,
-        accountEmail: this.currentAccountEmail
+        accountEmail: this.currentAccountEmail,
+        lastEmailSeen: this.getLastEmailTimestamp()
       });
-      
+
     } else if (!threadId && this.currentThreadId) {
       // No thread detected
       console.log('No Outlook thread detected');
@@ -278,6 +313,51 @@ class OutlookSidebarConnector {
     return isValid;
   }
 
+  // Scrape the newest message's timestamp (epoch ms) from the open conversation.
+  // Outlook's date markup is hard to pin down, so we collect candidate
+  // [title] elements, scan from the end, and take the first parseable date.
+  // Resilience over precision: returns null on any failure and never throws.
+  getLastEmailTimestamp() {
+    try {
+      // Gather candidate date-bearing elements (titles often hold full datetimes).
+      const candidates = [
+        ...document.querySelectorAll('div[data-convid] span[title]'),
+        ...document.querySelectorAll('[role="main"] span[title]')
+      ];
+
+      if (!candidates.length) {
+        this._logTimestampFailure('No span[title] date candidates found');
+        return null;
+      }
+
+      // Cap the scan at the last 30 candidates for performance.
+      const start = Math.max(0, candidates.length - 30);
+
+      // Iterate from the END; first parseable title wins (newest message).
+      for (let i = candidates.length - 1; i >= start; i--) {
+        const title = candidates[i].getAttribute('title');
+        if (!title) continue;
+        const parsed = Date.parse(title.trim());
+        if (!Number.isNaN(parsed)) {
+          return parsed;
+        }
+      }
+
+      this._logTimestampFailure('No parseable date title among candidates');
+      return null;
+    } catch (error) {
+      this._logTimestampFailure('Error scraping timestamp: ' + (error && error.message));
+      return null;
+    }
+  }
+
+  // Log a timestamp-scrape failure at most once per thread (console.debug).
+  _logTimestampFailure(reason) {
+    if (this._tsLogged) return;
+    this._tsLogged = true;
+    console.debug('getLastEmailTimestamp:', reason);
+  }
+
   async checkExtensionState() {
     try {
       const result = await chrome.storage.local.get(['extensionEnabled']);
@@ -407,7 +487,8 @@ class OutlookSidebarConnector {
           platform: 'outlook',
           subject: this.getCurrentThreadSubject(),
           account: this.currentAccount,
-          accountEmail: this.currentAccountEmail
+          accountEmail: this.currentAccountEmail,
+          lastEmailSeen: this.getLastEmailTimestamp()
         });
       } else if (message.action === 'getUpdatedSubject') {
         // Get fresh subject for current thread
