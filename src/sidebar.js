@@ -835,6 +835,8 @@ class EmailNotesSidebar {
           const subjectB = (noteB.subject || 'No Subject').toLowerCase();
           return subjectA.localeCompare(subjectB);
         }
+        case 'activity':
+          return ((noteB.lastEmailSeen ?? noteB.lastModified) || 0) - ((noteA.lastEmailSeen ?? noteA.lastModified) || 0);
         case 'recent':
         default:
           return (noteB.lastModified || 0) - (noteA.lastModified || 0);
