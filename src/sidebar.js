@@ -977,24 +977,26 @@ class EmailNotesSidebar {
     const cleanContent = this.extractTextFromMarkdown(noteData.content);
 
     // --- Preview windowing ---
-    // When searching and the first match starts beyond char 80, re-window the
-    // preview so the match is visible; otherwise keep the original behaviour.
+    // When searching, collapse whitespace so the 2-line CSS clamp can't hide a
+    // match sitting past the note's first newlines, then window around the
+    // first match. Without a search the original preview is kept byte-for-byte.
     let preview;
-    if (searchTerm && cleanContent.length > 100) {
-      const matchIdx = cleanContent.toLowerCase().indexOf(searchTerm);
-      if (matchIdx > 80) {
-        // Start ~40 chars before the match, snapping back to a word boundary.
-        let start = matchIdx - 40;
-        const spaceIdx = cleanContent.lastIndexOf(' ', matchIdx - 1);
-        if (spaceIdx > matchIdx - 40) {
+    if (searchTerm) {
+      const flat = cleanContent.replace(/\s+/g, ' ').trim();
+      const matchIdx = flat.toLowerCase().indexOf(searchTerm);
+      if (matchIdx > 40) {
+        // Start ~30 chars before the match, snapping forward to a word boundary.
+        let start = matchIdx - 30;
+        const spaceIdx = flat.lastIndexOf(' ', matchIdx - 1);
+        if (spaceIdx > start) {
           start = spaceIdx + 1;
         }
         start = Math.max(0, start);
-        const window = cleanContent.substring(start, start + 100);
-        const needsTail = start + 100 < cleanContent.length;
+        const window = flat.substring(start, start + 100);
+        const needsTail = start + 100 < flat.length;
         preview = (start > 0 ? '…' : '') + window + (needsTail ? '...' : '');
       } else {
-        preview = cleanContent.substring(0, 100) + '...';
+        preview = flat.length > 100 ? flat.substring(0, 100) + '...' : flat;
       }
     } else {
       preview = cleanContent.length > 100
