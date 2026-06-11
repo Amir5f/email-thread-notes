@@ -12,19 +12,24 @@
       --bg-panel: #27272a;     /* Zinc-800 */
       --bg-hover: #3f3f46;     /* Zinc-700 */
       --bg-input: #09090b;     /* Zinc-950 */
-      
+
       --text-main: #e4e4e7;    /* Zinc-200 */
       --text-muted: #a1a1aa;   /* Zinc-400 */
-      
+
       --border-color: #3f3f46;
       --accent-color: #6366f1; /* Indigo-500 */
       --accent-hover: #818cf8; /* Indigo-400 */
       --accent-dim: rgba(99, 102, 241, 0.15);
-      
+
       --danger: #ef4444;
       --success: #10b981;
       --radius: 8px;
       --font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+
+      /* Unified transition scale */
+      --transition-fast: 0.15s cubic-bezier(0.2, 0, 0, 1);
+      --transition-base: 0.2s cubic-bezier(0.2, 0, 0, 1);
+      --transition-slow: 0.3s cubic-bezier(0.2, 0, 0, 1);
     }
 
     * {
@@ -36,6 +41,8 @@
     body {
       font-family: var(--font-family);
       font-size: 14px;
+      line-height: 1.5;
+      letter-spacing: 0.01em;
       background: var(--bg-app);
       color: var(--text-main);
       height: 100vh;
@@ -63,7 +70,7 @@
       justify-content: center;
       border-radius: 6px;
       cursor: pointer;
-      transition: all 0.2s ease;
+      transition: background var(--transition-base), color var(--transition-base);
       color: var(--text-muted);
       background: transparent;
       border: none;
@@ -75,7 +82,12 @@
     }
 
     .settings-icon:active {
-      transform: scale(0.95);
+      transform: scale(0.92);
+    }
+
+    .settings-icon:focus-visible {
+      outline: none;
+      box-shadow: 0 0 0 2px var(--accent-dim);
     }
 
     .settings-icon.active .icon {
@@ -83,7 +95,7 @@
     }
 
     .settings-icon .icon {
-      transition: transform 0.3s ease;
+      transition: transform var(--transition-slow);
     }
 
     .icon {
@@ -115,7 +127,7 @@
       font-weight: 500;
       cursor: pointer;
       border-radius: 6px;
-      transition: all 0.2s ease;
+      transition: background var(--transition-base), color var(--transition-base), box-shadow var(--transition-base);
       position: relative;
     }
 
@@ -131,8 +143,13 @@
     .sidebar-btn.active {
       color: var(--text-main);
       background: var(--bg-hover);
-      box-shadow: 0 1px 2px rgba(0,0,0,0.2);
+      box-shadow: inset 0 1px 0 rgba(255,255,255,0.04), 0 1px 2px rgba(0,0,0,0.25);
       font-weight: 600;
+    }
+
+    .sidebar-btn:focus-visible {
+      outline: none;
+      box-shadow: 0 0 0 2px var(--accent-dim);
     }
 
     .sidebar-btn:disabled {
@@ -153,7 +170,7 @@
       display: none;
       flex-direction: column;
       padding: 20px;
-      animation: fadeIn 0.5s ease 0.1s both;
+      animation: fadeIn 0.2s cubic-bezier(0.2, 0, 0, 1) both;
     }
 
     .content-view.active {
@@ -163,7 +180,7 @@
     @keyframes fadeIn {
       from {
         opacity: 0;
-        transform: translateY(10px);
+        transform: translateY(6px);
       }
       to {
         opacity: 1;
@@ -179,7 +196,7 @@
       margin-bottom: 8px;
       border: none;
       border-bottom: 1px solid var(--border-color);
-      transition: all 0.3s ease;
+      transition: opacity var(--transition-base);
       display: none;
     }
 
@@ -227,13 +244,22 @@
       font-size: 12px;
       font-weight: 500;
       cursor: pointer;
-      transition: all 0.2s ease;
+      transition: border-color var(--transition-base), background var(--transition-base), color var(--transition-base);
     }
 
     .thread-open-btn:hover {
       border-color: var(--accent-color);
       background: var(--accent-dim);
       color: var(--accent-color);
+    }
+
+    .thread-open-btn:active {
+      transform: scale(0.92);
+    }
+
+    .thread-open-btn:focus-visible {
+      outline: none;
+      box-shadow: 0 0 0 2px var(--accent-dim);
     }
 
     .thread-open-btn:disabled {
@@ -259,6 +285,25 @@
       overflow-y: auto;
       cursor: text;
       position: relative;
+      scrollbar-width: thin;
+      scrollbar-color: transparent transparent;
+    }
+
+    #quillEditor:hover {
+      scrollbar-color: var(--bg-hover) transparent;
+    }
+
+    #quillEditor::-webkit-scrollbar {
+      width: 6px;
+    }
+
+    #quillEditor::-webkit-scrollbar-thumb {
+      background-color: transparent;
+      border-radius: 4px;
+    }
+
+    #quillEditor:hover::-webkit-scrollbar-thumb {
+      background-color: var(--bg-hover);
     }
 
     #quillEditor:focus-within {
@@ -377,6 +422,18 @@
       font-style: italic;
     }
 
+    /* Links inside the editor */
+    .milkdown a {
+      color: var(--accent-color);
+      text-decoration: underline;
+      text-underline-offset: 2px;
+      cursor: pointer;
+    }
+
+    .milkdown a:hover {
+      filter: brightness(1.15);
+    }
+
     /* Footer */
     .notes-footer {
       padding: 12px 16px;
@@ -385,13 +442,13 @@
       display: flex;
       justify-content: space-between;
       align-items: center;
-      animation: slideUp 0.4s ease 0.3s both;
+      animation: slideUp 0.2s cubic-bezier(0.2, 0, 0, 1) both;
     }
 
     @keyframes slideUp {
       from {
         opacity: 0;
-        transform: translateY(10px);
+        transform: translateY(6px);
       }
       to {
         opacity: 1;
@@ -420,12 +477,12 @@
 
     .status-indicator.typing {
       background: #f59e0b;
-      animation: pulse 2s ease-in-out infinite;
+      animation: statusPulse 1.4s cubic-bezier(0.4, 0, 0.6, 1) infinite;
     }
 
     .status-indicator.saving {
       background: var(--accent-color);
-      animation: pulse 2s ease-in-out infinite;
+      animation: statusPulse 1s cubic-bezier(0.4, 0, 0.6, 1) infinite;
     }
 
     .status-indicator.saved {
@@ -437,6 +494,7 @@
       background: #ef4444;
     }
 
+    /* Refined pulse for idle saved state */
     @keyframes pulse {
       0%, 100% {
         opacity: 1;
@@ -445,6 +503,20 @@
       50% {
         opacity: 0.7;
         transform: scale(1.15);
+      }
+    }
+
+    /* Stronger pulse for active saving/typing states */
+    @keyframes statusPulse {
+      0%, 100% {
+        opacity: 1;
+        transform: scale(1);
+        box-shadow: 0 0 0 0 currentColor;
+      }
+      50% {
+        opacity: 0.85;
+        transform: scale(1.2);
+        box-shadow: 0 0 0 3px rgba(99, 102, 241, 0);
       }
     }
 
@@ -465,18 +537,23 @@
       align-items: center;
       justify-content: center;
       color: var(--text-muted);
-      transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+      transition: background var(--transition-base), color var(--transition-base), transform var(--transition-fast);
       position: relative;
     }
 
     .icon-btn:hover {
       background: var(--bg-hover);
       color: var(--text-main);
-      transform: translateY(-2px);
+      transform: translateY(-1px);
     }
 
     .icon-btn:active {
-      transform: translateY(0) scale(0.95);
+      transform: translateY(0) scale(0.92);
+    }
+
+    .icon-btn:focus-visible {
+      outline: none;
+      box-shadow: 0 0 0 2px var(--accent-dim);
     }
 
     .icon-btn.save-btn:hover {
@@ -489,6 +566,32 @@
       background: rgba(239, 68, 68, 0.1);
     }
 
+    .icon-btn.archive-btn.active {
+      color: var(--accent-color);
+      background: var(--accent-dim);
+    }
+
+    .icon-btn.pin-btn.active {
+      color: var(--accent-color);
+      background: var(--accent-dim);
+    }
+
+    #threadArchivedChip {
+      font-size: 10px;
+      font-weight: 500;
+      letter-spacing: 0.03em;
+      padding: 2px 7px;
+      height: 18px;
+      line-height: 14px;
+      border-radius: 8px;
+      border: 1px solid var(--border-color);
+      color: var(--text-muted);
+      background: rgba(39, 39, 42, 0.7); /* --bg-panel at 70% */
+      margin-top: 4px;
+      display: inline-flex;
+      align-items: center;
+    }
+
     #lastUpdated {
       font-size: 12px;
       color: var(--text-muted);
@@ -497,15 +600,37 @@
     /* Settings Panel */
     .sidebar-settings {
       background: var(--bg-panel);
+      box-shadow: inset 0 1px 0 rgba(255,255,255,0.03);
       border-bottom: 1px solid var(--border-color);
       padding: 20px;
       flex-shrink: 0;
       display: none;
+      overflow-y: auto;
+      max-height: 60vh;
+      scrollbar-width: thin;
+      scrollbar-color: transparent transparent;
+    }
+
+    .sidebar-settings:hover {
+      scrollbar-color: var(--bg-hover) transparent;
+    }
+
+    .sidebar-settings::-webkit-scrollbar {
+      width: 6px;
+    }
+
+    .sidebar-settings::-webkit-scrollbar-thumb {
+      background-color: transparent;
+      border-radius: 4px;
+    }
+
+    .sidebar-settings:hover::-webkit-scrollbar-thumb {
+      background-color: var(--bg-hover);
     }
 
     .sidebar-settings.active {
       display: block;
-      animation: slideDown 0.3s ease;
+      animation: slideDown 0.2s cubic-bezier(0.2, 0, 0, 1);
     }
 
     .settings-header h4 {
@@ -533,7 +658,7 @@
       font-size: 14px;
       font-weight: 500;
       cursor: pointer;
-      transition: all 0.2s ease;
+      transition: background var(--transition-base), border-color var(--transition-base), color var(--transition-base), transform var(--transition-fast);
       display: flex;
       align-items: center;
       justify-content: center;
@@ -544,6 +669,15 @@
       background: var(--bg-hover);
       border-color: var(--text-muted);
       transform: translateY(-1px);
+    }
+
+    .settings-btn:active {
+      transform: translateY(0) scale(0.98);
+    }
+
+    .settings-btn:focus-visible {
+      outline: none;
+      box-shadow: 0 0 0 2px var(--accent-dim);
     }
 
     .export-btn:hover {
@@ -563,6 +697,40 @@
       color: var(--text-muted);
       margin-top: 6px;
       line-height: 1.4;
+    }
+
+    .settings-label {
+      font-size: 10px;
+      font-weight: 600;
+      letter-spacing: 0.06em;
+      text-transform: uppercase;
+      color: var(--text-muted);
+      margin-bottom: 8px;
+    }
+
+    .storage-meter {
+      height: 6px;
+      background: var(--bg-app);
+      border: 1px solid var(--border-color);
+      border-radius: 4px;
+      overflow: hidden;
+      margin: 6px 0 4px;
+    }
+
+    .storage-meter-fill {
+      height: 100%;
+      width: 0%;
+      background: var(--accent-color);
+      border-radius: 4px;
+      transition: width 0.3s ease;
+    }
+
+    .storage-meter-fill.warn {
+      background: #fbbf24;
+    }
+
+    .storage-meter-fill.danger {
+      background: #f87171;
     }
 
     .file-location {
@@ -612,10 +780,16 @@
       flex-wrap: wrap;
     }
 
-    .search-input {
+    .search-input-wrap {
+      position: relative;
       flex: 1 1 60%;
       min-width: 160px;
+    }
+
+    .search-input {
+      width: 100%;
       padding: 9px 12px;
+      padding-right: 28px;
       border: 1px solid var(--border-color);
       background: var(--bg-input);
       color: var(--text-main);
@@ -623,12 +797,50 @@
       font-size: 14px;
       outline: none;
       margin-bottom: 0;
-      transition: all 0.2s ease;
+      transition: border-color var(--transition-base), box-shadow var(--transition-base);
     }
 
     .search-input:focus {
       border-color: var(--accent-color);
       box-shadow: 0 0 0 2px var(--accent-dim);
+    }
+
+    .search-input:focus-visible {
+      outline: none;
+    }
+
+    .clear-search-btn {
+      position: absolute;
+      right: 6px;
+      top: 50%;
+      transform: translateY(-50%);
+      width: 18px;
+      height: 18px;
+      border: none;
+      background: transparent;
+      color: var(--text-muted);
+      border-radius: 50%;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 4px;
+      transition: all 0.2s ease;
+    }
+
+    .clear-search-btn:hover {
+      background: var(--bg-hover);
+      color: var(--text-main);
+    }
+
+    .clear-search-btn svg {
+      width: 12px;
+      height: 12px;
+      stroke: currentColor;
+      fill: none;
+      stroke-width: 2;
+      stroke-linecap: round;
+      stroke-linejoin: round;
     }
 
     .filter-options {
@@ -647,11 +859,16 @@
       color: var(--text-main);
       outline: none;
       cursor: pointer;
-      transition: all 0.2s ease;
+      transition: border-color var(--transition-base), box-shadow var(--transition-base);
     }
 
     .filter-select:focus {
       border-color: var(--accent-color);
+    }
+
+    .filter-select:focus-visible {
+      outline: none;
+      box-shadow: 0 0 0 2px var(--accent-dim);
     }
 
     .new-note-btn {
@@ -667,7 +884,7 @@
       align-items: center;
       gap: 6px;
       cursor: pointer;
-      transition: all 0.2s ease;
+      transition: background var(--transition-base), color var(--transition-base), transform var(--transition-fast);
     }
 
     .new-note-btn.visible {
@@ -677,6 +894,15 @@
     .new-note-btn:hover {
       background: var(--accent-color);
       color: #fff;
+    }
+
+    .new-note-btn:active {
+      transform: scale(0.95);
+    }
+
+    .new-note-btn:focus-visible {
+      outline: none;
+      box-shadow: 0 0 0 2px var(--accent-dim);
     }
 
     .new-note-btn svg {
@@ -837,6 +1063,69 @@
       direction: ltr !important;
       text-align: left !important;
     }
+
+    /* Undo toast entrance animation */
+    @keyframes toastSlideUp {
+      from {
+        opacity: 0;
+        transform: translateX(-50%) translateY(8px);
+      }
+      to {
+        opacity: 1;
+        transform: translateX(-50%) translateY(0);
+      }
+    }
+
+    /* Undo toast */
+    .undo-toast {
+      position: fixed;
+      bottom: 16px;
+      left: 50%;
+      transform: translateX(-50%);
+      background: var(--bg-panel);
+      border: 1px solid var(--border-color);
+      border-radius: 10px;
+      padding: 10px 14px;
+      font-size: 13px;
+      color: var(--text-main);
+      box-shadow: inset 0 1px 0 rgba(255,255,255,0.04), 0 6px 20px rgba(0, 0, 0, 0.5);
+      z-index: 10003;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      max-width: calc(100% - 32px);
+      animation: toastSlideUp 0.18s cubic-bezier(0.2, 0, 0, 1) both;
+    }
+
+    .undo-toast button.undo-btn {
+      background: transparent;
+      color: var(--accent-color);
+      border: none;
+      font-weight: 600;
+      cursor: pointer;
+      padding: 4px 8px;
+      border-radius: 6px;
+      font-size: 13px;
+      font-family: inherit;
+      transition: background var(--transition-base);
+    }
+
+    .undo-toast button.undo-btn:hover {
+      background: var(--bg-hover);
+    }
+
+    .undo-toast button.undo-btn:active {
+      transform: scale(0.95);
+    }
+
+    .undo-toast button.undo-btn:focus-visible {
+      outline: none;
+      box-shadow: 0 0 0 2px var(--accent-dim);
+    }
+
+    .undo-toast.error {
+      border-color: #f87171;
+    }
   </style>
 </head>
 <body>
@@ -884,6 +1173,14 @@
       <div class="help-text">Restore notes from backup file</div>
     </div>
 
+    <div class="settings-section storage-usage">
+      <div class="settings-label">Storage</div>
+      <div class="storage-meter">
+        <div class="storage-meter-fill" id="storageMeterFill"></div>
+      </div>
+      <div class="help-text" id="storageUsageText">Calculating…</div>
+    </div>
+
     <div class="settings-section file-location">
       <div class="help-text">
         <strong>☁️ Automatic Cloud Sync</strong><br>
@@ -915,6 +1212,7 @@
           </button>
         </div>
         <div class="thread-details" id="threadDetails">Gmail • Account 1</div>
+        <span id="threadArchivedChip" style="display: none;">Archived</span>
       </div>
 
       <!-- Milkdown Editor -->
@@ -933,6 +1231,19 @@
               <polyline points="7 3 7 8 15 8"></polyline>
             </svg>
           </button>
+          <button class="icon-btn pin-btn" id="pinNoteBtn" title="Pin note" disabled>
+            <svg class="icon" viewBox="0 0 24 24">
+              <line x1="12" y1="17" x2="12" y2="22"></line>
+              <path d="M5 17h14v-1.76a2 2 0 0 0-1.11-1.79l-1.78-.9A2 2 0 0 1 15 10.76V6h1a2 2 0 0 0 0-4H8a2 2 0 0 0 0 4h1v4.76a2 2 0 0 1-1.11 1.79l-1.78.9A2 2 0 0 0 5 15.24Z"></path>
+            </svg>
+          </button>
+          <button class="icon-btn archive-btn" id="archiveNoteBtn" title="Archive note" disabled>
+            <svg class="icon" viewBox="0 0 24 24">
+              <polyline points="21 8 21 21 3 21 3 8"></polyline>
+              <rect x="1" y="3" width="22" height="5"></rect>
+              <line x1="10" y1="12" x2="14" y2="12"></line>
+            </svg>
+          </button>
           <button class="icon-btn delete-btn" id="deleteNoteBtn" title="Delete this note">
             <svg class="icon" viewBox="0 0 24 24">
               <polyline points="3 6 5 6 21 6"></polyline>
@@ -947,17 +1258,23 @@
     <!-- All Notes View -->
     <div class="content-view active" id="allNotesView">
       <div class="search-section">
-        <input
-          type="text"
-          id="notesSearchInput"
-          placeholder="Search notes..."
-          class="search-input"
-        >
+        <div class="search-input-wrap">
+          <input
+            type="text"
+            id="notesSearchInput"
+            placeholder="Search notes..."
+            class="search-input"
+          >
+          <button id="clearSearchBtn" class="clear-search-btn" title="Clear search" aria-label="Clear search" style="display: none;">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><line x1="6" y1="6" x2="18" y2="18"></line><line x1="6" y1="18" x2="18" y2="6"></line></svg>
+          </button>
+        </div>
         <div class="filter-options">
           <select id="sortFilter" class="filter-select">
             <option value="recent">Recent First</option>
             <option value="oldest">Oldest First</option>
             <option value="subject">By Subject</option>
+            <option value="activity" title="Activity as of your last visit to each thread">Recent activity</option>
           </select>
         </div>
         <button class="new-note-btn" id="newNoteBtn">
@@ -992,6 +1309,8 @@
       </div>
     </div>
   </div>
+
+  <div id="undoToast" class="undo-toast" role="status" aria-live="polite" style="display: none;"></div>
 
   <!-- Load sidebar module (now using bundled Milkdown, no import map needed) -->
   <script type="module" src="sidebar.js"></script>

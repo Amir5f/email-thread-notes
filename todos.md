@@ -38,6 +38,21 @@
 
 ---
 
+## 🔨 In Progress — v2.8.0 (branch `feature/v2.8-pins-archive`)
+
+Full task breakdown, model assignments, and phase test checklists: see `IMPLEMENTATION_PLAN.md`.
+
+- [x] Foundation bug fixes: saveNote field clobbering, export getDeviceId error, broken All Notes pagination *(validated by Amir 2026-06-11)*
+- [x] Pin notes to top of All Notes list (kebab/right-click menu) *(validated by Amir 2026-06-11)*
+- [x] Archive notes: collapsible Archived section, thread-view archive button *(validated by Amir 2026-06-11)*
+- [x] Undo toast replacing confirm()/alert() dialogs *(validated by Amir 2026-06-11)*
+- [x] Storage usage meter in Settings *(validated by Amir 2026-06-11)*
+- [x] Search term highlighting *(validated by Amir 2026-06-11)*
+- [x] "Recent activity" sort (last-email-seen approximation) *(validated by Amir 2026-06-11)*
+- [x] Round 2: clickable/auto-linked URLs in editor, thread-view Pin button, search deep-match fix, search clear button, visual polish pass *(validated by Amir 2026-06-11)*
+- [x] Repo migration out of iCloud + stable extension ID (Phase 4 complete 2026-06-11)
+- [x] Merge feature/v2.8-pins-archive to main + version bump to 2.8.0
+
 ## 🚀 Immediate Next Steps
 
 ### Agreed Priority: Missing Features & Code Cleanup
@@ -84,9 +99,9 @@
 
 ## 📊 Current Status
 
-**Version**: v2.2.0 (Chrome Storage Sync Migration)
-**Status**: Production ready with automatic cross-device synchronization
-**Next Milestone**: v2.3.0 (Advanced Features & Performance)
+**Version**: v2.8.0
+**Status**: Production ready — pins, archive, undo toast, storage meter, search highlighting, activity sort, visual polish
+**Next Milestone**: v2.9.0 (Advanced Features & Performance)
 
 **Architecture**: Chrome Side Panel API with simplified content scripts
 **Platforms**: Gmail and Outlook web clients

@@ -7,6 +7,8 @@ class GmailSidebarConnector {
     this.currentAccountEmail = null;
     this.currentAccountIndex = null;
     this.extensionEnabled = true;
+    this._tsLogged = false; // throttle timestamp-scrape failure logging (reset per thread)
+    this._tsRetryTimeout = null; // pending lazy-render retry for timestamp scrape
     this.init();
   }
 
@@ -64,6 +66,15 @@ class GmailSidebarConnector {
       this.currentThreadId = threadId;
       this.currentSubject = subject;
 
+      // Reset per-thread timestamp logging and cancel any pending retry
+      this._tsLogged = false;
+      if (this._tsRetryTimeout) {
+        clearTimeout(this._tsRetryTimeout);
+        this._tsRetryTimeout = null;
+      }
+
+      const lastEmailSeen = this.getLastEmailTimestamp();
+
       // Notify sidebar of thread change
       this.notifySidebar('threadChanged', {
         threadId: this.getAccountSpecificThreadId(threadId),
@@ -71,23 +82,47 @@ class GmailSidebarConnector {
         platform: 'gmail',
         subject: subject,
         account: this.currentAccount,
-        accountEmail: this.currentAccountEmail
+        accountEmail: this.currentAccountEmail,
+        lastEmailSeen: lastEmailSeen
       });
-      
+
+      // Gmail renders conversations lazily; if the scrape came back empty,
+      // retry once after a short delay and send a follow-up if it succeeds
+      // and we're still on the same thread.
+      if (lastEmailSeen === null) {
+        this._tsRetryTimeout = setTimeout(() => {
+          this._tsRetryTimeout = null;
+          if (this.currentThreadId !== threadId) return;
+          const retryTs = this.getLastEmailTimestamp();
+          if (retryTs !== null && this.currentThreadId === threadId) {
+            this.notifySidebar('threadChanged', {
+              threadId: this.getAccountSpecificThreadId(threadId),
+              originalThreadId: threadId,
+              platform: 'gmail',
+              subject: this.currentSubject,
+              account: this.currentAccount,
+              accountEmail: this.currentAccountEmail,
+              lastEmailSeen: retryTs
+            });
+          }
+        }, 1500);
+      }
+
     } else if (threadId && threadId === this.currentThreadId && subject !== this.currentSubject) {
       // Same thread but subject changed (page loaded more content)
       console.log('SUBJECT UPDATED:', this.currentSubject, '->', subject);
       this.currentSubject = subject;
-      
+
       this.notifySidebar('threadChanged', {
         threadId: this.getAccountSpecificThreadId(threadId),
         originalThreadId: threadId,
         platform: 'gmail',
         subject: subject,
         account: this.currentAccount,
-        accountEmail: this.currentAccountEmail
+        accountEmail: this.currentAccountEmail,
+        lastEmailSeen: this.getLastEmailTimestamp()
       });
-      
+
     } else if (!threadId && this.currentThreadId) {
       // No thread detected
       console.log('No thread detected');
@@ -158,6 +193,53 @@ class GmailSidebarConnector {
     }
     
     return null;
+  }
+
+  // Scrape the newest message's timestamp (epoch ms) from the open conversation.
+  // Resilience over precision: returns null on any failure and never throws.
+  getLastEmailTimestamp() {
+    try {
+      // Prefer date elements inside the conversation container; fall back globally.
+      let dateEls = document.querySelectorAll('div[role="main"] span.g3');
+      if (!dateEls.length) {
+        dateEls = document.querySelectorAll('span.g3');
+      }
+      if (!dateEls.length) {
+        this._logTimestampFailure('No span.g3 date elements found');
+        return null;
+      }
+
+      // The last element is the newest message in conversation view.
+      const el = dateEls[dateEls.length - 1];
+
+      // Try title, then data-tooltip, then textContent.
+      const sources = [
+        el.getAttribute('title'),
+        el.getAttribute('data-tooltip'),
+        el.textContent
+      ];
+
+      for (const source of sources) {
+        if (!source) continue;
+        const parsed = Date.parse(source.trim());
+        if (!Number.isNaN(parsed)) {
+          return parsed;
+        }
+      }
+
+      this._logTimestampFailure('Could not parse any date source from newest message');
+      return null;
+    } catch (error) {
+      this._logTimestampFailure('Error scraping timestamp: ' + (error && error.message));
+      return null;
+    }
+  }
+
+  // Log a timestamp-scrape failure at most once per thread (console.debug).
+  _logTimestampFailure(reason) {
+    if (this._tsLogged) return;
+    this._tsLogged = true;
+    console.debug('getLastEmailTimestamp:', reason);
   }
 
   async checkExtensionState() {
@@ -291,7 +373,8 @@ class GmailSidebarConnector {
           platform: 'gmail',
           subject: this.getCurrentThreadSubject(),
           account: this.currentAccount,
-          accountEmail: this.currentAccountEmail
+          accountEmail: this.currentAccountEmail,
+          lastEmailSeen: this.getLastEmailTimestamp()
         });
       } else if (message.action === 'getUpdatedSubject') {
         // Get fresh subject for current thread

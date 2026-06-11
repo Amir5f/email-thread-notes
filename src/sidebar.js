@@ -8,19 +8,16 @@ class EmailNotesSidebar {
     this.currentView = 'all'; // 'thread' or 'all'
     this.manualThreadSelection = false;
     this.currentOriginalThreadId = null;
+    this.currentLastEmailSeen = null;
     this.saveTimeout = null;
     this.milkdownEditor = null; // Milkdown editor instance
     this.rtlObserver = null; // MutationObserver for RTL detection
+    this.currentNoteArchived = false;
+    this.currentNotePinned = false;
 
     // Promise to track when Milkdown editor is fully initialized
     this.editorReadyPromise = null;
     this.resolveEditorReady = null;
-
-    // Infinite scroll state
-    this.notesPerPage = 20;
-    this.currentNotesPage = 0;
-    this.filteredNotes = [];
-    this.isLoadingMore = false;
 
     this.init();
   }
@@ -83,6 +80,22 @@ class EmailNotesSidebar {
       this.saveCurrentNoteImmediately();
     });
 
+    // Pin button handler
+    const pinBtn = document.getElementById('pinNoteBtn');
+    if (pinBtn) {
+      pinBtn.addEventListener('click', () => {
+        this.togglePinCurrentNote();
+      });
+    }
+
+    // Archive button handler
+    const archiveBtn = document.getElementById('archiveNoteBtn');
+    if (archiveBtn) {
+      archiveBtn.addEventListener('click', () => {
+        this.toggleArchiveCurrentNote();
+      });
+    }
+
     // Delete button handler
     const deleteBtn = document.getElementById('deleteNoteBtn');
     deleteBtn.addEventListener('click', () => {
@@ -91,11 +104,26 @@ class EmailNotesSidebar {
 
     // Search and filter handlers for All Notes view
     const searchInput = document.getElementById('notesSearchInput');
+    const clearSearchBtn = document.getElementById('clearSearchBtn');
     const sortFilter = document.getElementById('sortFilter');
 
     searchInput.addEventListener('input', () => {
+      // Toggle clear button visibility
+      if (clearSearchBtn) {
+        clearSearchBtn.style.display = searchInput.value ? 'flex' : 'none';
+      }
       this.filterAndDisplayNotes();
     });
+
+    // Clear search button handler
+    if (clearSearchBtn) {
+      clearSearchBtn.addEventListener('click', () => {
+        searchInput.value = '';
+        clearSearchBtn.style.display = 'none';
+        this.filterAndDisplayNotes();
+        searchInput.focus();
+      });
+    }
 
     sortFilter.addEventListener('change', () => {
       this.filterAndDisplayNotes();
@@ -193,8 +221,12 @@ class EmailNotesSidebar {
       // Escape to clear search
       if (e.key === 'Escape') {
         const searchInput = document.getElementById('notesSearchInput');
+        const clearSearchBtn = document.getElementById('clearSearchBtn');
         if (searchInput && searchInput === document.activeElement) {
           searchInput.value = '';
+          if (clearSearchBtn) {
+            clearSearchBtn.style.display = 'none';
+          }
           this.filterAndDisplayNotes();
           searchInput.blur();
         }
@@ -269,7 +301,8 @@ class EmailNotesSidebar {
           message.subject,
           message.account,
           message.accountEmail,
-          message.originalThreadId
+          message.originalThreadId,
+          message.lastEmailSeen
         );
         sendResponse({ success: true });
       } else if (message.action === 'platformChanged') {
@@ -328,7 +361,8 @@ class EmailNotesSidebar {
               response.subject,
               response.account,
               response.accountEmail,
-              response.originalThreadId
+              response.originalThreadId,
+              response.lastEmailSeen
             );
           } else {
             this.handleNoThread();
@@ -355,7 +389,7 @@ class EmailNotesSidebar {
     this.switchToAllNotesView();
   }
 
-  handleThreadChange(threadId, platform, subject, account, accountEmail, originalThreadId) {
+  handleThreadChange(threadId, platform, subject, account, accountEmail, originalThreadId, lastEmailSeen) {
     this.manualThreadSelection = false;
     const wasThreadView = this.currentView === 'thread';
     const previousThreadId = this.currentThreadId;
@@ -371,8 +405,12 @@ class EmailNotesSidebar {
     this.currentAccount = account;
     this.currentAccountEmail = accountEmail;
     this.currentOriginalThreadId = originalThreadId || (threadId ? threadId.split('_').pop() : null);
-    
+    this.currentLastEmailSeen = lastEmailSeen ?? null;
+
     if (threadId) {
+      // Persist newest-email timestamp for existing notes (fire-and-forget)
+      this.maybeUpdateLastEmailSeen(threadId, this.currentLastEmailSeen);
+
       // Update thread info display
       this.updateThreadInfo(threadId, platform, subject, account, accountEmail);
       
@@ -397,6 +435,35 @@ class EmailNotesSidebar {
     }
 
     this.updateNewNoteButton();
+  }
+
+  // Persist the newest-email timestamp onto an EXISTING note for this thread.
+  // Only updates when the scraped value is newer than what's stored. We never
+  // create a note here (saveCurrentNote handles new notes) and never trigger a
+  // list re-render. Fails silently (console.debug) so scraping issues never
+  // affect the rest of the UI.
+  async maybeUpdateLastEmailSeen(threadId, lastEmailSeen) {
+    if (!threadId || !lastEmailSeen) return;
+
+    try {
+      const response = await chrome.runtime.sendMessage({
+        action: 'getNote',
+        threadId
+      });
+
+      const note = response && response.note;
+      if (!note) return; // only track threads that already have a note
+
+      if (lastEmailSeen > (note.lastEmailSeen || 0)) {
+        await chrome.runtime.sendMessage({
+          action: 'updateNoteFields',
+          threadId,
+          fields: { lastEmailSeen }
+        });
+      }
+    } catch (error) {
+      console.debug('maybeUpdateLastEmailSeen failed:', error && error.message);
+    }
   }
 
 
@@ -661,6 +728,14 @@ class EmailNotesSidebar {
           this.currentOriginalThreadId = response.note.originalThreadId;
         }
 
+        // Set archive state
+        this.currentNoteArchived = !!response.note.archived;
+        this.updateArchiveButtonState(true, this.currentNoteArchived);
+
+        // Set pin state
+        this.currentNotePinned = !!response.note.pinned;
+        this.updatePinButtonState(true, this.currentNotePinned);
+
         if (this.milkdownEditor) {
           // Set markdown content in Milkdown (editor is guaranteed to be ready now)
           console.log('Calling setMarkdown with content...');
@@ -696,6 +771,15 @@ class EmailNotesSidebar {
         }, 1000);
       } else {
         console.log('📭 No note found for this thread - clearing editor');
+
+        // Reset archive state
+        this.currentNoteArchived = false;
+        this.updateArchiveButtonState(false, false);
+
+        // Reset pin state
+        this.currentNotePinned = false;
+        this.updatePinButtonState(false, false);
+
         if (this.milkdownEditor) {
           console.log('Calling setMarkdown with empty string...');
           await this.milkdownEditor.setMarkdown('');
@@ -773,6 +857,29 @@ class EmailNotesSidebar {
     }
   }
 
+  // Returns a comparator over [threadId, noteData] entries for the given sort option.
+  getSortComparator(sortFilter) {
+    return (a, b) => {
+      const [, noteA] = a;
+      const [, noteB] = b;
+
+      switch (sortFilter) {
+        case 'oldest':
+          return (noteA.lastModified || 0) - (noteB.lastModified || 0);
+        case 'subject': {
+          const subjectA = (noteA.subject || 'No Subject').toLowerCase();
+          const subjectB = (noteB.subject || 'No Subject').toLowerCase();
+          return subjectA.localeCompare(subjectB);
+        }
+        case 'activity':
+          return ((noteB.lastEmailSeen ?? noteB.lastModified) || 0) - ((noteA.lastEmailSeen ?? noteA.lastModified) || 0);
+        case 'recent':
+        default:
+          return (noteB.lastModified || 0) - (noteA.lastModified || 0);
+      }
+    };
+  }
+
   filterAndDisplayNotes() {
     if (!this.allNotes || this.allNotes.length === 0) {
       this.showEmptyAllNotesState();
@@ -825,29 +932,32 @@ class EmailNotesSidebar {
 
     console.log('📊 After filtering:', filteredNotes.length, 'notes');
 
-    // Sort notes
-    filteredNotes.sort((a, b) => {
-      const [, noteA] = a;
-      const [, noteB] = b;
+    // Split into active and archived groups
+    const activeNotes = filteredNotes.filter(([, noteData]) => !noteData.archived);
+    const archivedNotes = filteredNotes.filter(([, noteData]) => !!noteData.archived);
 
-      switch (sortFilter) {
-        case 'oldest':
-          return (noteA.lastModified || 0) - (noteB.lastModified || 0);
-        case 'subject':
-          const subjectA = (noteA.subject || 'No Subject').toLowerCase();
-          const subjectB = (noteB.subject || 'No Subject').toLowerCase();
-          return subjectA.localeCompare(subjectB);
-        case 'recent':
-        default:
-          return (noteB.lastModified || 0) - (noteA.lastModified || 0);
-      }
+    const baseComparator = this.getSortComparator(sortFilter);
+
+    // Sort archived notes with the base comparator
+    archivedNotes.sort(baseComparator);
+
+    // Sort active notes: pinned entries first, then apply selected sort within each group
+    activeNotes.sort((a, b) => {
+      const pinnedA = !!a[1].pinned;
+      const pinnedB = !!b[1].pinned;
+      if (pinnedA !== pinnedB) return pinnedA ? -1 : 1;
+      return baseComparator(a, b);
     });
 
-    // Display filtered notes
-    if (filteredNotes.length === 0) {
-      this.showNoFilterResultsState(searchTerm);
+    // Display filtered notes or appropriate empty state
+    if (activeNotes.length === 0 && archivedNotes.length === 0) {
+      if (searchTerm) {
+        this.showNoFilterResultsState(searchTerm);
+      } else {
+        this.showEmptyAllNotesState();
+      }
     } else {
-      this.displayAllNotes(filteredNotes);
+      this.displayAllNotes({ active: activeNotes, archived: archivedNotes, searchTerm });
     }
   }
 
@@ -896,72 +1006,193 @@ class EmailNotesSidebar {
     `;
   }
 
-  displayAllNotes(noteEntries, resetList = false) {
-    const notesContent = document.querySelector('#allNotesView .notes-content');
-    const noteMap = new Map(noteEntries);
+  // Builds and returns the HTML string for a single note card.
+  // isArchived = true adds the 'archived' class and the Archived chip.
+  // searchTerm (already lowercased) drives preview windowing and highlighting.
+  buildNoteCardHtml([threadId, noteData], isArchived = false, searchTerm = '') {
+    const cleanContent = this.extractTextFromMarkdown(noteData.content);
 
-    // Calculate which notes to display
-    const startIndex = resetList ? 0 : this.currentNotesPage * this.notesPerPage;
-    const endIndex = startIndex + this.notesPerPage;
-    const notesToDisplay = noteEntries.slice(startIndex, endIndex);
-    const hasMore = endIndex < noteEntries.length;
-
-    console.log(`📄 Displaying notes ${startIndex}-${endIndex} of ${noteEntries.length}`);
-
-    const notesHtml = notesToDisplay.map(([threadId, noteData]) => {
-      // Extract text content from markdown for preview
-      const cleanContent = this.extractTextFromMarkdown(noteData.content);
-      const preview = cleanContent.length > 100
+    // --- Preview windowing ---
+    // When searching, collapse whitespace so the 2-line CSS clamp can't hide a
+    // match sitting past the note's first newlines, then window around the
+    // first match. Without a search the original preview is kept byte-for-byte.
+    let preview;
+    if (searchTerm) {
+      const flat = cleanContent.replace(/\s+/g, ' ').trim();
+      const matchIdx = flat.toLowerCase().indexOf(searchTerm);
+      if (matchIdx > 40) {
+        // Start ~30 chars before the match, snapping forward to a word boundary.
+        let start = matchIdx - 30;
+        const spaceIdx = flat.lastIndexOf(' ', matchIdx - 1);
+        if (spaceIdx > start) {
+          start = spaceIdx + 1;
+        }
+        start = Math.max(0, start);
+        const window = flat.substring(start, start + 100);
+        const needsTail = start + 100 < flat.length;
+        preview = (start > 0 ? '…' : '') + window + (needsTail ? '...' : '');
+      } else {
+        preview = flat.length > 100 ? flat.substring(0, 100) + '...' : flat;
+      }
+    } else {
+      preview = cleanContent.length > 100
         ? cleanContent.substring(0, 100) + '...'
         : cleanContent;
-      const previewClass = this.isRtlText(cleanContent) ? 'note-preview rtl' : 'note-preview';
-      const timestamp = this.formatTimestamp(new Date(noteData.lastModified || noteData.timestamp));
-      const subject = noteData.subject || 'No Subject';
-      const platform = noteData.platform || 'gmail';
-      const originalThreadId = noteData.originalThreadId || threadId.split('_').pop();
-      const safeOriginalId = this.escapeHtml(originalThreadId || '');
-      const isActive = this.currentThreadId && threadId === this.currentThreadId;
-      const activeClass = isActive ? ' active' : '';
+    }
 
-      return `
-        <div class="note-item${activeClass}"
-          data-thread-id="${threadId}"
-          data-platform="${platform}"
-          data-original-thread-id="${safeOriginalId}"
-          data-account="${this.escapeHtml(noteData.account || '')}"
-          data-account-email="${this.escapeHtml(noteData.accountEmail || '')}"
-          data-subject="${this.escapeHtml(subject)}">
-          <div class="note-header">
-            <div class="note-subject">${this.escapeHtml(subject)}</div>
-            <div class="note-meta">
-              <div class="note-platform">${platform}</div>
-              <button class="note-open-btn" title="Open email thread" aria-label="Open email thread">
-                <svg class="note-open-icon" viewBox="0 0 24 24">
-                  <path d="M7 17L17 7" stroke-width="1.6" fill="none" stroke-linecap="round"></path>
-                  <polyline points="11,7 17,7 17,13" stroke-width="1.6" fill="none" stroke-linecap="round" stroke-linejoin="round"></polyline>
-                </svg>
-              </button>
-            </div>
+    const previewClass = this.isRtlText(cleanContent) ? 'note-preview rtl' : 'note-preview';
+    const timestamp = this.formatTimestamp(new Date(noteData.lastModified || noteData.timestamp));
+    const subject = noteData.subject || 'No Subject';
+    const platform = noteData.platform || 'gmail';
+    const originalThreadId = noteData.originalThreadId || threadId.split('_').pop();
+    const safeOriginalId = this.escapeHtml(originalThreadId || '');
+    const isActive = this.currentThreadId && threadId === this.currentThreadId;
+    const activeClass = isActive ? ' active' : '';
+    const archivedClass = isArchived ? ' archived' : '';
+
+    const pinIconHtml = noteData.pinned
+      ? `<svg class="note-pin-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+          <line x1="12" y1="17" x2="12" y2="22"></line>
+          <path d="M5 17h14v-1.76a2 2 0 0 0-1.11-1.79l-1.78-.9A2 2 0 0 1 15 10.76V6h1a2 2 0 0 0 0-4H8a2 2 0 0 0 0 4h1v4.76a2 2 0 0 1-1.11 1.79l-1.78.9A2 2 0 0 0 5 15.24Z"></path>
+         </svg>`
+      : '';
+
+    const archivedChipHtml = isArchived
+      ? `<div class="note-platform note-archived-chip">archived</div>`
+      : '';
+
+    return `
+      <div class="note-item${activeClass}${archivedClass}"
+        data-thread-id="${threadId}"
+        data-platform="${platform}"
+        data-original-thread-id="${safeOriginalId}"
+        data-account="${this.escapeHtml(noteData.account || '')}"
+        data-account-email="${this.escapeHtml(noteData.accountEmail || '')}"
+        data-subject="${this.escapeHtml(subject)}">
+        <div class="note-header">
+          <div class="note-subject">${pinIconHtml}${this.highlightMatches(subject, searchTerm)}</div>
+          <div class="note-meta">
+            ${archivedChipHtml}
+            <button class="note-open-btn" title="Open email thread" aria-label="Open email thread">
+              <svg class="note-open-icon" viewBox="0 0 24 24">
+                <path d="M7 17L17 7" stroke-width="1.6" fill="none" stroke-linecap="round"></path>
+                <polyline points="11,7 17,7 17,13" stroke-width="1.6" fill="none" stroke-linecap="round" stroke-linejoin="round"></polyline>
+              </svg>
+            </button>
+            <button class="note-kebab-btn" title="Note actions" aria-label="Note actions" aria-haspopup="menu">
+              <svg viewBox="0 0 24 24" width="16" height="16" fill="currentColor" aria-hidden="true">
+                <circle cx="12" cy="5" r="1.5"></circle>
+                <circle cx="12" cy="12" r="1.5"></circle>
+                <circle cx="12" cy="19" r="1.5"></circle>
+              </svg>
+            </button>
           </div>
-          <div class="${previewClass}">${this.escapeHtml(preview)}</div>
-          <div class="note-timestamp">${timestamp}</div>
         </div>
-      `;
-    }).join('');
-    
-    notesContent.innerHTML = `
-      <div class="notes-list-header">
-        <div class="notes-count">${noteEntries.length} saved note${noteEntries.length === 1 ? '' : 's'}</div>
-      </div>
-      <div class="notes-list">
-        ${notesHtml}
+        <div class="${previewClass}">${this.highlightMatches(preview, searchTerm)}</div>
+        <div class="note-timestamp">${timestamp}</div>
       </div>
     `;
-    
+  }
+
+  async displayAllNotes({ active, archived, searchTerm }) {
+    const notesContent = document.querySelector('#allNotesView .notes-content');
+
+    // Read persisted collapse state; default to collapsed (false = collapsed).
+    // During a search we always expand regardless of the stored value.
+    const isSearching = !!(searchTerm && searchTerm.length > 0);
+    let archivedOpen = isSearching;
+    if (!isSearching && archived.length > 0) {
+      try {
+        const stored = await chrome.storage.local.get(['archivedSectionOpen']);
+        archivedOpen = !!stored.archivedSectionOpen;
+      } catch (e) {
+        // Ignore storage errors; default stays collapsed.
+        console.warn('Could not read archivedSectionOpen from storage:', e);
+      }
+    }
+
+    // Build the note map over ALL entries (active + archived) so handler
+    // wiring works for every rendered card regardless of collapsed state.
+    const noteMap = new Map([...active, ...archived]);
+
+    // --- Active list ---
+    const activeHtml = active.map(entry => this.buildNoteCardHtml(entry, false, searchTerm)).join('');
+
+    // --- Archived section (only when there are archived notes) ---
+    let archivedSectionHtml = '';
+    if (archived.length > 0) {
+      const chevronStyle = archivedOpen ? 'transform: rotate(90deg);' : '';
+      const archivedCardsHtml = archived.map(entry => this.buildNoteCardHtml(entry, true, searchTerm)).join('');
+      archivedSectionHtml = `
+        <div class="archived-section-header"
+          role="button"
+          tabindex="0"
+          aria-expanded="${archivedOpen}"
+          data-searching="${isSearching}">
+          <svg class="archived-chevron" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" style="${chevronStyle}" aria-hidden="true">
+            <polyline points="9 18 15 12 9 6"></polyline>
+          </svg>
+          <span>Archived (${archived.length})</span>
+        </div>
+        <div class="archived-notes-list" style="display: ${archivedOpen ? 'flex' : 'none'};">
+          ${archivedCardsHtml}
+        </div>
+      `;
+    }
+
+    const activeCount = active.length;
+    const archivedCount = archived.length;
+    const noteCountLabel = `${activeCount} ${activeCount === 1 ? 'note' : 'notes'}` +
+      (archivedCount > 0 ? ` · ${archivedCount} archived` : '');
+
+    notesContent.innerHTML = `
+      <div class="notes-list-header">
+        <div class="notes-count">${noteCountLabel}</div>
+      </div>
+      <div class="notes-list">
+        ${activeHtml}
+        ${archivedSectionHtml}
+      </div>
+    `;
+
     // Add CSS for notes list
     this.addNotesListStyles();
-    
-    // Add click handlers for note items
+
+    // Wire up archived section toggle
+    const sectionHeader = notesContent.querySelector('.archived-section-header');
+    if (sectionHeader) {
+      const archivedList = notesContent.querySelector('.archived-notes-list');
+
+      const toggle = () => {
+        const nowOpen = sectionHeader.getAttribute('aria-expanded') === 'true';
+        const nextOpen = !nowOpen;
+        sectionHeader.setAttribute('aria-expanded', String(nextOpen));
+        archivedList.style.display = nextOpen ? 'flex' : 'none';
+        const chevron = sectionHeader.querySelector('.archived-chevron');
+        if (chevron) {
+          chevron.style.transform = nextOpen ? 'rotate(90deg)' : '';
+        }
+        // Only persist when not in a search context
+        const searching = sectionHeader.getAttribute('data-searching') === 'true';
+        if (!searching) {
+          chrome.storage.local.set({ archivedSectionOpen: nextOpen }).catch(err => {
+            console.warn('Could not persist archivedSectionOpen:', err);
+          });
+        }
+      };
+
+      sectionHeader.addEventListener('click', toggle);
+      sectionHeader.addEventListener('keydown', (e) => {
+        if (e.key === 'Enter' || e.key === ' ') {
+          e.preventDefault();
+          toggle();
+        }
+      });
+    }
+
+    // Add click/contextmenu handlers for ALL note items (active + archived).
+    // Archived cards are in the DOM even when collapsed (display:none on the
+    // container), so querySelectorAll picks them up correctly.
     document.querySelectorAll('.note-item').forEach(item => {
       const threadId = item.getAttribute('data-thread-id');
       item._noteData = noteMap.get(threadId) || null;
@@ -988,6 +1219,14 @@ class EmailNotesSidebar {
         });
       }
 
+      const kebabBtn = item.querySelector('.note-kebab-btn');
+      if (kebabBtn) {
+        kebabBtn.addEventListener('click', (event) => {
+          event.stopPropagation();
+          this.showNoteContextMenu(event, item, kebabBtn);
+        });
+      }
+
       // Store handlers for cleanup if needed
       item._clickHandler = clickHandler;
       item._contextHandler = contextHandler;
@@ -1002,17 +1241,19 @@ class EmailNotesSidebar {
     style.textContent = `
       .notes-list-header {
         padding: 4px 0 8px 0;
-        border-bottom: 1px solid #e8eaed;
+        border-bottom: 1px solid var(--border-color);
         margin-bottom: 6px;
         display: flex;
         align-items: center;
         justify-content: space-between;
       }
-      
+
       .notes-count {
-        font-size: 11px;
+        font-size: 10px;
+        font-weight: 600;
+        letter-spacing: 0.06em;
+        text-transform: uppercase;
         color: var(--text-muted);
-        font-weight: 500;
       }
       
       .notes-list {
@@ -1047,23 +1288,28 @@ class EmailNotesSidebar {
       .note-item {
         padding: 12px 14px;
         border: 1px solid var(--border-color);
-        border-radius: 12px;
+        border-radius: 10px;
         cursor: pointer;
-        transition: background-color 0.2s, border-color 0.2s, box-shadow 0.2s;
+        transition: background-color 0.2s cubic-bezier(0.2, 0, 0, 1), border-color 0.2s cubic-bezier(0.2, 0, 0, 1), box-shadow 0.2s cubic-bezier(0.2, 0, 0, 1), transform 0.15s cubic-bezier(0.2, 0, 0, 1);
         background: var(--bg-panel);
         width: 100%;
-        box-shadow: 0 1px 2px rgba(0, 0, 0, 0.2);
+        box-shadow: inset 0 1px 0 rgba(255,255,255,0.03), 0 1px 2px rgba(0, 0, 0, 0.2);
       }
-      
+
       .note-item:hover {
         background-color: var(--bg-hover);
         border-color: var(--text-muted);
-        box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+        box-shadow: inset 0 1px 0 rgba(255,255,255,0.04), 0 4px 12px rgba(0, 0, 0, 0.3);
+        transform: translateY(-1px);
       }
-      
+
+      .note-item:active {
+        transform: translateY(0);
+      }
+
       .note-item.active {
         border-color: var(--accent-color);
-        box-shadow: 0 0 0 2px var(--accent-dim);
+        box-shadow: inset 0 1px 0 rgba(255,255,255,0.04), 0 0 0 2px var(--accent-dim);
         background: var(--bg-hover);
       }
       
@@ -1086,12 +1332,18 @@ class EmailNotesSidebar {
       
       .note-platform {
         font-size: 10px;
+        font-weight: 500;
+        letter-spacing: 0.03em;
         color: var(--text-muted);
-        background: var(--bg-app);
+        background: rgba(24, 24, 27, 0.7); /* --bg-app at 70% */
         border: 1px solid var(--border-color);
         padding: 2px 6px;
+        height: 18px;
+        line-height: 14px;
         border-radius: 8px;
         text-transform: capitalize;
+        display: inline-flex;
+        align-items: center;
       }
 
       .note-meta {
@@ -1110,12 +1362,21 @@ class EmailNotesSidebar {
         align-items: center;
         justify-content: center;
         color: var(--text-muted);
-        transition: background 0.2s ease, color 0.2s ease;
+        transition: background 0.2s cubic-bezier(0.2, 0, 0, 1), color 0.2s cubic-bezier(0.2, 0, 0, 1), transform 0.15s cubic-bezier(0.2, 0, 0, 1);
       }
 
       .note-open-btn:hover {
         background: var(--bg-hover);
         color: var(--accent-color);
+      }
+
+      .note-open-btn:active {
+        transform: scale(0.92);
+      }
+
+      .note-open-btn:focus-visible {
+        outline: none;
+        box-shadow: 0 0 0 2px var(--accent-dim);
       }
 
       .note-open-icon {
@@ -1146,8 +1407,186 @@ class EmailNotesSidebar {
         font-size: 11px;
         opacity: 0.8;
       }
+
+      /* --- Pinned indicator --- */
+      .note-pin-icon {
+        display: inline-block;
+        vertical-align: middle;
+        width: 12px;
+        height: 12px;
+        margin-right: 4px;
+        flex-shrink: 0;
+        color: var(--accent-color);
+        position: relative;
+        top: -1px;
+      }
+
+      /* --- Archived note card --- */
+      .note-item.archived {
+        opacity: 0.65;
+      }
+
+      .note-archived-chip {
+        color: var(--text-muted);
+        background: rgba(24, 24, 27, 0.7); /* --bg-app at 70% */
+        border: 1px solid var(--border-color);
+        font-style: italic;
+      }
+
+      /* --- Archived section header --- */
+      .archived-section-header {
+        display: flex;
+        align-items: center;
+        gap: 5px;
+        font-size: 10px;
+        font-weight: 600;
+        letter-spacing: 0.05em;
+        text-transform: uppercase;
+        color: var(--text-muted);
+        cursor: pointer;
+        padding: 6px 4px 4px;
+        border-radius: 6px;
+        user-select: none;
+        transition: background-color 0.15s cubic-bezier(0.2, 0, 0, 1);
+        outline: none;
+      }
+
+      .archived-section-header:hover {
+        background-color: var(--bg-hover);
+      }
+
+      .archived-section-header:focus-visible {
+        box-shadow: 0 0 0 2px var(--accent-dim);
+      }
+
+      .archived-chevron {
+        width: 13px;
+        height: 13px;
+        flex-shrink: 0;
+        transition: transform 0.2s cubic-bezier(0.2, 0, 0, 1);
+      }
+
+      /* --- Archived notes container --- */
+      .archived-notes-list {
+        display: flex;
+        flex-direction: column;
+        gap: 10px;
+        padding-top: 4px;
+      }
+
+      /* --- Kebab button --- */
+      .note-kebab-btn {
+        border: none;
+        background: transparent;
+        padding: 4px;
+        border-radius: 50%;
+        cursor: pointer;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        color: var(--text-muted);
+        opacity: 0.35;
+        transition: background 0.2s cubic-bezier(0.2, 0, 0, 1), color 0.2s cubic-bezier(0.2, 0, 0, 1), opacity 0.15s cubic-bezier(0.2, 0, 0, 1), transform 0.15s cubic-bezier(0.2, 0, 0, 1);
+        flex-shrink: 0;
+      }
+
+      .note-kebab-btn:hover {
+        background: var(--bg-hover);
+        color: var(--accent-color);
+        opacity: 1;
+      }
+
+      .note-kebab-btn:active {
+        transform: scale(0.92);
+      }
+
+      .note-kebab-btn:focus-visible {
+        outline: none;
+        box-shadow: 0 0 0 2px var(--accent-dim);
+        opacity: 1;
+      }
+
+      .note-item:hover .note-kebab-btn,
+      .note-item:focus-within .note-kebab-btn {
+        opacity: 1;
+      }
+
+      /* --- Context menu entrance --- */
+      @keyframes contextMenuIn {
+        from {
+          opacity: 0;
+          transform: scale(0.95);
+        }
+        to {
+          opacity: 1;
+          transform: scale(1);
+        }
+      }
+
+      /* --- Context menu surface --- */
+      .note-context-menu {
+        position: fixed;
+        background: var(--bg-panel);
+        border: 1px solid var(--border-color);
+        border-radius: 8px;
+        box-shadow: inset 0 1px 0 rgba(255,255,255,0.04), 0 6px 20px rgba(0, 0, 0, 0.5);
+        min-width: 140px;
+        font-size: 13px;
+        z-index: 10002;
+        padding: 4px 0;
+        font-family: inherit;
+        transform-origin: top;
+        animation: contextMenuIn 0.12s cubic-bezier(0.2, 0, 0, 1) both;
+      }
+
+      /* --- Context menu items --- */
+      .context-menu-item {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        padding: 7px 12px;
+        cursor: pointer;
+        color: var(--text-main);
+        transition: background-color 0.15s cubic-bezier(0.2, 0, 0, 1), color 0.15s cubic-bezier(0.2, 0, 0, 1);
+        white-space: nowrap;
+        user-select: none;
+      }
+
+      .context-menu-item:hover {
+        background-color: var(--bg-hover);
+        color: var(--accent-color);
+      }
+
+      .context-menu-item:focus-visible {
+        outline: none;
+        background-color: var(--bg-hover);
+        box-shadow: inset 0 0 0 2px var(--accent-dim);
+      }
+
+      .context-menu-item svg {
+        flex-shrink: 0;
+        width: 14px;
+        height: 14px;
+      }
+
+      .context-menu-item.destructive {
+        color: var(--text-muted);
+      }
+
+      .context-menu-item.destructive:hover {
+        background-color: rgba(220, 38, 38, 0.15);
+        color: #f87171;
+      }
+
+      /* --- Search match highlight --- */
+      .search-mark {
+        background: var(--accent-dim);
+        color: var(--text-main);
+        border-radius: 2px;
+        padding: 0 1px;
+      }
     `;
-    
+
     document.head.appendChild(style);
   }
 
@@ -1210,7 +1649,7 @@ class EmailNotesSidebar {
         }
       } else {
         console.error('❌ Unknown platform:', platform);
-        alert('Unknown email platform. Cannot open thread.');
+        this.showUndoToast('Unknown email platform. Cannot open thread.', null, { isError: true });
         return;
       }
 
@@ -1227,7 +1666,7 @@ class EmailNotesSidebar {
 
     } catch (error) {
       console.error('❌ Error opening thread:', error);
-      alert('Unable to navigate to thread. Please try again.');
+      this.showUndoToast('Unable to navigate to thread. Please try again.', null, { isError: true });
     }
   }
 
@@ -1264,123 +1703,226 @@ class EmailNotesSidebar {
     );
   }
 
-  showNoteContextMenu(event, noteItem) {
-    // Remove any existing context menu
+  showNoteContextMenu(event, noteItem, anchorEl = null) {
+    // Remove any existing context menu first
     const existingMenu = document.querySelector('.note-context-menu');
     if (existingMenu) {
       existingMenu.remove();
     }
 
-    // Create context menu
+    const noteData = noteItem._noteData || {};
+    const isPinned = !!noteData.pinned;
+    const isArchived = !!noteData.archived;
+
+    // SVG icons
+    const pinSvg = `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+      <line x1="12" y1="17" x2="12" y2="22"></line>
+      <path d="M5 17h14v-1.76a2 2 0 0 0-1.11-1.79l-1.78-.9A2 2 0 0 1 15 10.76V6h1a2 2 0 0 0 0-4H8a2 2 0 0 0 0 4h1v4.76a2 2 0 0 1-1.11 1.79l-1.78.9A2 2 0 0 0 5 15.24Z"></path>
+    </svg>`;
+    const archiveSvg = `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+      <polyline points="21 8 21 21 3 21 3 8"></polyline>
+      <rect x="1" y="3" width="22" height="5"></rect>
+      <line x1="10" y1="12" x2="14" y2="12"></line>
+    </svg>`;
+    const trashSvg = `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+      <polyline points="3 6 5 6 21 6"></polyline>
+      <path d="M19 6l-1 14H6L5 6"></path>
+      <path d="M10 11v6"></path>
+      <path d="M14 11v6"></path>
+      <path d="M9 6V4h6v2"></path>
+    </svg>`;
+
+    // Build menu items from a data array to avoid copy-pasted HTML blocks
+    const items = [
+      { action: 'pin',     label: isPinned  ? 'Unpin'     : 'Pin',       icon: pinSvg,     destructive: false },
+      { action: 'archive', label: isArchived ? 'Unarchive' : 'Archive',   icon: archiveSvg, destructive: false },
+      { action: 'delete',  label: 'Delete',                                icon: trashSvg,   destructive: true  },
+    ];
+
     const contextMenu = document.createElement('div');
     contextMenu.className = 'note-context-menu';
-    contextMenu.innerHTML = `
-      <div class="context-menu-item delete-item">
-        <span class="menu-icon">🗑️</span>
-        <span class="menu-text">Delete Note</span>
-      </div>
-    `;
-    
-    contextMenu.style.cssText = `
-      position: fixed;
-      top: ${event.clientY}px;
-      left: ${event.clientX}px;
-      background: white;
-      border: 1px solid #dadce0;
-      border-radius: 6px;
-      box-shadow: 0 4px 12px rgba(0,0,0,0.15);
-      z-index: 10002;
-      font-family: inherit;
-      font-size: 13px;
-      min-width: 120px;
-    `;
+    contextMenu.setAttribute('role', 'menu');
 
-    const deleteItem = contextMenu.querySelector('.delete-item');
-    deleteItem.style.cssText = `
-      padding: 8px 12px;
-      cursor: pointer;
-      display: flex;
-      align-items: center;
-      gap: 8px;
-      transition: background-color 0.2s;
-    `;
-
-    deleteItem.addEventListener('mouseenter', () => {
-      deleteItem.style.backgroundColor = '#fee2e2';
-      deleteItem.style.color = '#dc2626';
+    items.forEach(({ action, label, icon, destructive }) => {
+      const item = document.createElement('div');
+      item.className = 'context-menu-item' + (destructive ? ' destructive' : '');
+      item.setAttribute('role', 'menuitem');
+      item.setAttribute('tabindex', '-1');
+      item.innerHTML = icon + `<span>${label}</span>`;
+      item.addEventListener('click', () => this._handleContextMenuAction(action, contextMenu, noteItem));
+      contextMenu.appendChild(item);
     });
 
-    deleteItem.addEventListener('mouseleave', () => {
-      deleteItem.style.backgroundColor = 'white';
-      deleteItem.style.color = 'inherit';
-    });
-
-    deleteItem.addEventListener('click', async () => {
-      contextMenu.remove();
-      await this.deleteNoteFromList(noteItem);
-    });
-
-    // Add to page
+    // Initial off-screen placement so we can measure
+    contextMenu.style.top = '-9999px';
+    contextMenu.style.left = '-9999px';
     document.body.appendChild(contextMenu);
 
-    // Close menu when clicking outside
-    const closeMenu = (e) => {
-      if (!contextMenu.contains(e.target)) {
-        contextMenu.remove();
-        document.removeEventListener('click', closeMenu);
+    // Determine raw position
+    let rawTop, rawLeft;
+    if (anchorEl) {
+      const rect = anchorEl.getBoundingClientRect();
+      rawTop = rect.bottom + 4;
+      rawLeft = rect.right - contextMenu.offsetWidth;
+    } else {
+      rawTop = event.clientY;
+      rawLeft = event.clientX;
+    }
+
+    // Clamp to viewport
+    const menuW = contextMenu.offsetWidth;
+    const menuH = contextMenu.offsetHeight;
+    const vw = window.innerWidth;
+    const vh = window.innerHeight;
+
+    const top  = Math.min(rawTop,  vh - menuH - 4);
+    const left = Math.max(4, Math.min(rawLeft, vw - menuW - 4));
+
+    contextMenu.style.top  = `${top}px`;
+    contextMenu.style.left = `${left}px`;
+
+    // --- Cleanup helpers ---
+    const removeMenu = () => {
+      contextMenu.remove();
+      document.removeEventListener('click', outsideClick);
+      document.removeEventListener('keydown', escapeKey);
+      const notesList = document.querySelector('.notes-list');
+      if (notesList) {
+        notesList.removeEventListener('scroll', removeMenu);
       }
     };
-    
-    // Add listener on next tick to avoid immediate closure
+
+    const outsideClick = (e) => {
+      if (!contextMenu.contains(e.target)) {
+        removeMenu();
+      }
+    };
+
+    const escapeKey = (e) => {
+      if (e.key === 'Escape') {
+        removeMenu();
+      }
+    };
+
+    // Let menu-item clicks run the full cleanup instead of a bare .remove()
+    contextMenu._cleanup = removeMenu;
+
+    // Attach on next tick so the triggering click doesn't immediately close the menu
     setTimeout(() => {
-      document.addEventListener('click', closeMenu);
+      document.addEventListener('click', outsideClick);
+      document.addEventListener('keydown', escapeKey);
+      const notesList = document.querySelector('.notes-list');
+      if (notesList) {
+        notesList.addEventListener('scroll', removeMenu, { once: true });
+      }
     }, 0);
+  }
+
+  async _handleContextMenuAction(action, menuEl, noteItem) {
+    if (menuEl._cleanup) {
+      menuEl._cleanup();
+    } else {
+      menuEl.remove();
+    }
+
+    if (action === 'delete') {
+      await this.deleteNoteFromList(noteItem);
+      return;
+    }
+
+    // Pin / Archive toggle
+    const threadId = noteItem.getAttribute('data-thread-id');
+    const noteData = noteItem._noteData || {};
+    let fields;
+
+    if (action === 'pin') {
+      fields = { pinned: !noteData.pinned };
+    } else if (action === 'archive') {
+      fields = { archived: !noteData.archived };
+    } else {
+      return;
+    }
+
+    try {
+      const response = await chrome.runtime.sendMessage({
+        action: 'updateNoteFields',
+        threadId,
+        fields,
+      });
+
+      if (response && response.success) {
+        this.loadAllNotesView();
+
+        // Show undo toast only when archiving (not unarchiving, not pinning)
+        if (action === 'archive' && fields.archived === true) {
+          this.showUndoToast('Note archived', async () => {
+            const undoResp = await chrome.runtime.sendMessage({
+              action: 'updateNoteFields',
+              threadId,
+              fields: { archived: false }
+            });
+            if (undoResp && undoResp.success) {
+              this.loadAllNotesView();
+            }
+          });
+        }
+      } else {
+        console.error('Failed to update note fields:', response?.error);
+      }
+    } catch (err) {
+      console.error('Error updating note fields:', err);
+    }
   }
 
   async deleteNoteFromList(noteItem) {
     const threadId = noteItem.getAttribute('data-thread-id');
-    
+
     if (!threadId) {
       console.error('No thread ID found for note item');
       return;
     }
 
-    // Show confirmation dialog
-    const confirmed = confirm('Are you sure you want to delete this note? This action cannot be undone.');
-    if (!confirmed) return;
+    // Keep note data for potential restore
+    const savedNote = noteItem._noteData || null;
 
     try {
       console.log('Deleting note with thread ID:', threadId);
-      
+
       const response = await chrome.runtime.sendMessage({
         action: 'deleteNote',
-        threadId: threadId
+        threadId
       });
 
       if (response.success) {
         console.log('Note deleted successfully from list view');
-        
+
         // Remove the item from the list with animation
         noteItem.style.transition = 'all 0.3s ease';
         noteItem.style.opacity = '0';
         noteItem.style.transform = 'translateX(-20px)';
-        
+
         setTimeout(() => {
-          // Reload all notes to get fresh data
           this.loadAllNotesView();
-          
-          // Also refresh current thread view if it's the same note
-          if (threadId === this.currentThreadId && this.currentView === 'thread') {
-            this.loadThreadNotes();
-          }
         }, 300);
+
+        // Show undo toast if we have data to restore
+        if (savedNote) {
+          this.showUndoToast('Note deleted', async () => {
+            const restoreResp = await chrome.runtime.sendMessage({
+              action: 'restoreNote',
+              threadId,
+              noteData: savedNote
+            });
+            if (restoreResp && restoreResp.success) {
+              this.loadAllNotesView();
+            }
+          });
+        }
       } else {
         console.error('Failed to delete note:', response.error);
-        alert('Failed to delete note. Please try again.');
       }
     } catch (error) {
       console.error('Error deleting note from list:', error);
-      alert('Error deleting note. Please try again.');
     }
   }
 
@@ -1410,6 +1952,14 @@ class EmailNotesSidebar {
 
     const threadBtn = document.getElementById('threadNotesBtn');
     threadBtn.disabled = false;
+
+    // Set archive state
+    this.currentNoteArchived = !!noteData.archived;
+    this.updateArchiveButtonState(true, this.currentNoteArchived);
+
+    // Set pin state
+    this.currentNotePinned = !!noteData.pinned;
+    this.updatePinButtonState(true, this.currentNotePinned);
 
     const content = noteData.content || '';
     if (this.milkdownEditor) {
@@ -1507,6 +2057,14 @@ class EmailNotesSidebar {
         if (response.success) {
           this.updateSaveStatus('saved', 'Note cleared');
 
+          // Note no longer exists - reset archive state
+          this.currentNoteArchived = false;
+          this.updateArchiveButtonState(false, false);
+
+          // Reset pin state
+          this.currentNotePinned = false;
+          this.updatePinButtonState(false, false);
+
           // Clear last updated timestamp
           const lastUpdated = document.getElementById('lastUpdated');
           lastUpdated.textContent = '';
@@ -1545,9 +2103,21 @@ class EmailNotesSidebar {
       if (response.success) {
         this.updateSaveStatus('saved', 'Saved');
 
+        // A note now exists for this thread; persist the newest-email
+        // timestamp if we have one (fire-and-forget, no list re-render).
+        if (this.currentLastEmailSeen) {
+          this.maybeUpdateLastEmailSeen(this.currentThreadId, this.currentLastEmailSeen);
+        }
+
         // Update last modified timestamp
         const lastUpdated = document.getElementById('lastUpdated');
         lastUpdated.textContent = this.formatTimestamp(new Date());
+
+        // Enable archive button if it was previously disabled (new note)
+        this.updateArchiveButtonState(true, this.currentNoteArchived);
+
+        // Enable pin button if it was previously disabled (new note)
+        this.updatePinButtonState(true, this.currentNotePinned);
 
         // Refresh All Notes list if it's loaded
         if (this.allNotes) {
@@ -1615,19 +2185,25 @@ class EmailNotesSidebar {
 
   async deleteCurrentNote() {
     if (!this.currentThreadId) return;
-    
-    // Show confirmation dialog
-    const confirmed = confirm('Are you sure you want to delete this note? This action cannot be undone.');
-    if (!confirmed) return;
-    
+
+    // Snapshot the thread ID and current view before the async gap
+    const threadId = this.currentThreadId;
+
     try {
+      // Fetch the full note before deleting so we can restore it on undo
+      const getNoteResponse = await chrome.runtime.sendMessage({
+        action: 'getNote',
+        threadId
+      });
+      const savedNote = getNoteResponse && getNoteResponse.note ? getNoteResponse.note : null;
+
       this.updateSaveStatus('saving', 'Deleting...');
-      
+
       const response = await chrome.runtime.sendMessage({
         action: 'deleteNote',
-        threadId: this.currentThreadId
+        threadId
       });
-      
+
       if (response.success) {
         // Clear the editor
         if (this.milkdownEditor) {
@@ -1641,6 +2217,14 @@ class EmailNotesSidebar {
         const lastUpdated = document.getElementById('lastUpdated');
         lastUpdated.textContent = '';
 
+        // Note no longer exists - reset archive state
+        this.currentNoteArchived = false;
+        this.updateArchiveButtonState(false, false);
+
+        // Reset pin state
+        this.currentNotePinned = false;
+        this.updatePinButtonState(false, false);
+
         this.updateSaveStatus('saved', 'Note deleted');
 
         // Return to ready state after 2 seconds
@@ -1648,9 +2232,32 @@ class EmailNotesSidebar {
           this.updateSaveStatus('ready', 'Ready');
         }, 2000);
 
-        // Refresh all notes view if it's currently shown
-        if (this.currentView === 'all') {
+        // Refresh all notes list
+        if (this.allNotes) {
           this.loadAllNotesView();
+        }
+
+        // Show undo toast if we have note data to restore
+        if (savedNote) {
+          this.showUndoToast('Note deleted', async () => {
+            const restoreResp = await chrome.runtime.sendMessage({
+              action: 'restoreNote',
+              threadId,
+              noteData: savedNote
+            });
+            if (restoreResp && restoreResp.success) {
+              // Reload the thread view if we're still looking at the same thread
+              if (this.currentView === 'thread' && this.currentThreadId === threadId) {
+                await this.loadThreadNotes();
+                this.updateArchiveButtonState(true, !!savedNote.archived);
+                this.updatePinButtonState(true, !!savedNote.pinned);
+              }
+              // Always refresh the list
+              if (this.allNotes) {
+                this.loadAllNotesView();
+              }
+            }
+          });
         }
       } else {
         this.updateSaveStatus('error', 'Delete failed');
@@ -1671,13 +2278,127 @@ class EmailNotesSidebar {
   updateSaveStatus(status, text) {
     const indicator = document.getElementById('statusIndicator');
     const statusText = document.getElementById('statusText');
-    
+
     // Remove all status classes
     indicator.className = 'status-indicator';
-    
+
     // Add specific status class
     indicator.classList.add(status);
     statusText.textContent = text;
+  }
+
+  updateArchiveButtonState(noteExists, archived) {
+    const archiveBtn = document.getElementById('archiveNoteBtn');
+    const archivedChip = document.getElementById('threadArchivedChip');
+
+    if (!archiveBtn) return;
+
+    archiveBtn.disabled = !noteExists;
+
+    if (archived) {
+      archiveBtn.classList.add('active');
+      archiveBtn.title = 'Unarchive note';
+      if (archivedChip) {
+        archivedChip.style.display = 'inline-block';
+      }
+    } else {
+      archiveBtn.classList.remove('active');
+      archiveBtn.title = 'Archive note';
+      if (archivedChip) {
+        archivedChip.style.display = 'none';
+      }
+    }
+  }
+
+  async toggleArchiveCurrentNote() {
+    if (!this.currentThreadId) return;
+
+    const threadId = this.currentThreadId;
+    const wasArchived = this.currentNoteArchived;
+
+    try {
+      const response = await chrome.runtime.sendMessage({
+        action: 'updateNoteFields',
+        threadId,
+        fields: { archived: !wasArchived }
+      });
+
+      if (response && response.success) {
+        this.currentNoteArchived = !!response.noteData?.archived;
+        this.updateArchiveButtonState(true, this.currentNoteArchived);
+
+        // Refresh All Notes data if loaded
+        if (this.allNotes) {
+          this.loadAllNotesView();
+        }
+
+        // Show undo toast only when the note was just archived
+        if (this.currentNoteArchived) {
+          this.showUndoToast('Note archived', async () => {
+            const undoResp = await chrome.runtime.sendMessage({
+              action: 'updateNoteFields',
+              threadId,
+              fields: { archived: false }
+            });
+            if (undoResp && undoResp.success) {
+              this.currentNoteArchived = false;
+              this.updateArchiveButtonState(true, false);
+              if (this.allNotes) {
+                this.loadAllNotesView();
+              }
+            }
+          });
+        }
+      } else {
+        console.error('Failed to update archive state:', response?.error);
+      }
+    } catch (error) {
+      console.error('Error toggling archive:', error);
+    }
+  }
+
+  updatePinButtonState(noteExists, pinned) {
+    const pinBtn = document.getElementById('pinNoteBtn');
+    if (!pinBtn) return;
+
+    pinBtn.disabled = !noteExists;
+
+    if (pinned) {
+      pinBtn.classList.add('active');
+      pinBtn.title = 'Unpin note';
+    } else {
+      pinBtn.classList.remove('active');
+      pinBtn.title = 'Pin note';
+    }
+  }
+
+  async togglePinCurrentNote() {
+    if (!this.currentThreadId) return;
+
+    const threadId = this.currentThreadId;
+    const wasPinned = this.currentNotePinned;
+
+    try {
+      const response = await chrome.runtime.sendMessage({
+        action: 'updateNoteFields',
+        threadId,
+        fields: { pinned: !wasPinned }
+      });
+
+      if (response && response.success) {
+        this.currentNotePinned = !!response.noteData?.pinned;
+        this.updatePinButtonState(true, this.currentNotePinned);
+
+        // Refresh All Notes data if loaded
+        if (this.allNotes) {
+          this.loadAllNotesView();
+        }
+      } else {
+        console.error('Failed to update pin state:', response?.error);
+      }
+    } catch (error) {
+      console.error('Error toggling pin:', error);
+    }
   }
 
   formatTimestamp(date) {
@@ -1717,6 +2438,37 @@ class EmailNotesSidebar {
     return div.innerHTML;
   }
 
+  // Returns an HTML string with search match segments wrapped in <mark>.
+  // XSS-safe: computes match offsets on raw text first, then escapes each
+  // segment individually, so escaping never shifts the offsets.
+  highlightMatches(text, searchTerm) {
+    if (!searchTerm) return this.escapeHtml(text);
+
+    const lowerText = text.toLowerCase();
+    const termLen = searchTerm.length;
+    const parts = [];
+    let cursor = 0;
+
+    let idx = lowerText.indexOf(searchTerm, cursor);
+    while (idx !== -1) {
+      // Non-matching segment before this match
+      if (idx > cursor) {
+        parts.push(this.escapeHtml(text.slice(cursor, idx)));
+      }
+      // Matching segment
+      parts.push(`<mark class="search-mark">${this.escapeHtml(text.slice(idx, idx + termLen))}</mark>`);
+      cursor = idx + termLen;
+      idx = lowerText.indexOf(searchTerm, cursor);
+    }
+
+    // Remaining tail after last match
+    if (cursor < text.length) {
+      parts.push(this.escapeHtml(text.slice(cursor)));
+    }
+
+    return parts.join('');
+  }
+
   decodeHtml(text) {
     const div = document.createElement('div');
     div.innerHTML = text || '';
@@ -1726,13 +2478,64 @@ class EmailNotesSidebar {
   toggleSettings() {
     const settingsPanel = document.getElementById('sidebarSettings');
     const settingsToggle = document.getElementById('settingsToggle');
-    
+
     if (settingsPanel.style.display === 'none') {
       settingsPanel.style.display = 'block';
       settingsToggle.classList.add('active');
+      this.refreshStorageUsage();
     } else {
       settingsPanel.style.display = 'none';
       settingsToggle.classList.remove('active');
+    }
+  }
+
+  async refreshStorageUsage() {
+    try {
+      const response = await chrome.runtime.sendMessage({ action: 'getStorageUsage' });
+
+      const fill = document.getElementById('storageMeterFill');
+      const text = document.getElementById('storageUsageText');
+
+      if (!response?.usage) {
+        if (text) {
+          text.textContent = 'Usage unavailable';
+        }
+        if (fill) {
+          fill.style.width = '0%';
+        }
+        return;
+      }
+
+      const { used, quota, percentage } = response.usage;
+
+      const usedKB = (used / 1024).toFixed(1);
+      const quotaKB = Math.round(quota / 1024);
+      const pct = Math.round(percentage);
+
+      if (text) {
+        text.textContent = `${usedKB} KB of ${quotaKB} KB used (${pct}%)`;
+      }
+
+      if (fill) {
+        fill.style.width = `${Math.min(pct, 100)}%`;
+
+        fill.classList.remove('warn', 'danger');
+        if (pct >= 90) {
+          fill.classList.add('danger');
+        } else if (pct >= 80) {
+          fill.classList.add('warn');
+        }
+      }
+    } catch (error) {
+      console.error('Error refreshing storage usage:', error);
+      const text = document.getElementById('storageUsageText');
+      if (text) {
+        text.textContent = 'Usage unavailable';
+      }
+      const fill = document.getElementById('storageMeterFill');
+      if (fill) {
+        fill.style.width = '0%';
+      }
     }
   }
 
@@ -1821,6 +2624,52 @@ class EmailNotesSidebar {
   hideSettingsStatus() {
     const statusElement = document.getElementById('settingsStatus');
     statusElement.style.display = 'none';
+  }
+
+  // Single-instance undo toast. If a toast is already visible the previous
+  // one is dismissed (without running its undo callback) before the new one
+  // appears.
+  showUndoToast(message, onUndo = null, { duration = 5000, isError = false } = {}) {
+    this.hideUndoToast();
+
+    const toast = document.getElementById('undoToast');
+    if (!toast) return;
+
+    // Clear previous content
+    toast.innerHTML = '';
+    toast.className = 'undo-toast' + (isError ? ' error' : '');
+
+    const msgSpan = document.createElement('span');
+    msgSpan.textContent = message;
+    toast.appendChild(msgSpan);
+
+    if (onUndo) {
+      const undoBtn = document.createElement('button');
+      undoBtn.className = 'undo-btn';
+      undoBtn.textContent = 'Undo';
+      undoBtn.addEventListener('click', () => {
+        this.hideUndoToast();
+        onUndo();
+      });
+      toast.appendChild(undoBtn);
+    }
+
+    toast.style.display = 'flex';
+
+    this._undoToastTimer = setTimeout(() => {
+      this.hideUndoToast();
+    }, duration);
+  }
+
+  hideUndoToast() {
+    if (this._undoToastTimer) {
+      clearTimeout(this._undoToastTimer);
+      this._undoToastTimer = null;
+    }
+    const toast = document.getElementById('undoToast');
+    if (toast) {
+      toast.style.display = 'none';
+    }
   }
 
   focusEditor() {
