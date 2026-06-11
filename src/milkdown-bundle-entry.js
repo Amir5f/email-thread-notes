@@ -6,3 +6,4 @@ export { commonmark } from '@milkdown/preset-commonmark';
 export { nord } from '@milkdown/theme-nord';
 export { listener, listenerCtx } from '@milkdown/plugin-listener';
 export { Plugin, PluginKey } from '@milkdown/prose/state';
+export { inputRules, InputRule } from '@milkdown/prose/inputrules';
