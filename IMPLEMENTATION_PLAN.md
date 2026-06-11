@@ -57,7 +57,7 @@ so `pinned`/`archived`/`importedAt`/original `timestamp` survive the 1-second au
 ### T0.3 — Remove broken pagination ✅ done — Fable
 `displayAllNotes()` rendered only the first 20 notes with no way to load more. Now renders the full list.
 
-### T0.4 — `updateNoteFields` background action ⬜ `Haiku`
+### T0.4 — `updateNoteFields` background action ✅ done — Haiku (validated by Fable)
 - **Files:** `src/background.js`
 - **Spec:** Add `async updateNoteFields(threadId, fields)` to `EmailNotesStorage`:
   - Read `email_notes_<threadId>`; if missing → `{ success: false, error: 'Note not found' }`.
@@ -229,7 +229,7 @@ if iCloud regenerates any before the move, delete them again the same way.
 | T0.1 | Extension key (manifest edit in Phase 4) | Fable | ✅ generated |
 | T0.2 | saveNote merge | Fable | ✅ done |
 | T0.3 | Remove pagination | Fable | ✅ done |
-| T0.4 | updateNoteFields action | Haiku | ⬜ |
+| T0.4 | updateNoteFields action | Haiku | ✅ done |
 | T1.1 | Sort/group pipeline | Sonnet | ⬜ |
 | T1.2 | Pinned + Archived rendering | Sonnet | ⬜ |
 | T1.3 | Kebab + context menu | Sonnet | ⬜ |

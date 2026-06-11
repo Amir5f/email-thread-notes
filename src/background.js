@@ -114,6 +114,47 @@ class EmailNotesStorage {
     }
   }
 
+  // Update flag fields only (pinned, archived, lastEmailSeen). Deliberately leaves
+  // lastModified and timestamp untouched to preserve date-based sorts.
+  async updateNoteFields(threadId, fields) {
+    try {
+      console.log('Background: Updating note fields for threadId:', threadId);
+
+      const storageKey = `${this.storagePrefix}${threadId}`;
+
+      // Read the existing note
+      const result = await chrome.storage.sync.get([storageKey]);
+      const existingNote = result[storageKey];
+
+      if (!existingNote) {
+        return { success: false, error: 'Note not found' };
+      }
+
+      // Whitelist-merge only pinned, archived, lastEmailSeen
+      if ('pinned' in fields) {
+        existingNote.pinned = fields.pinned;
+      }
+      if ('archived' in fields) {
+        existingNote.archived = fields.archived;
+      }
+      if ('lastEmailSeen' in fields) {
+        existingNote.lastEmailSeen = fields.lastEmailSeen;
+      }
+
+      // Write the merged note back
+      await chrome.storage.sync.set({
+        [storageKey]: existingNote
+      });
+
+      console.log('Background: Note fields updated successfully for threadId:', threadId);
+
+      return { success: true, noteData: existingNote };
+    } catch (error) {
+      console.error('Background: Error updating note fields for threadId:', threadId, error);
+      return { success: false, error: error.message };
+    }
+  }
+
   // Get all notes
   async getAllNotes() {
     try {
@@ -461,6 +502,11 @@ chrome.runtime.onMessage.addListener((request, _sender, sendResponse) => {
         case 'deleteNote':
           const deleteResult = await storageManager.deleteNote(request.threadId);
           sendResponse(deleteResult);
+          break;
+
+        case 'updateNoteFields':
+          const updateResult = await storageManager.updateNoteFields(request.threadId, request.fields || {});
+          sendResponse(updateResult);
           break;
 
         case 'getAllNotes':
