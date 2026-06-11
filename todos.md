@@ -42,14 +42,16 @@
 
 Full task breakdown, model assignments, and phase test checklists: see `IMPLEMENTATION_PLAN.md`.
 
-- [x] Foundation bug fixes: saveNote field clobbering, export getDeviceId error, broken All Notes pagination *(code done — pending user testing)*
-- [ ] Pin notes to top of All Notes list (kebab/right-click menu)
-- [ ] Archive notes: collapsible Archived section, thread-view archive button
-- [ ] Undo toast replacing confirm()/alert() dialogs
-- [ ] Storage usage meter in Settings
-- [ ] Search term highlighting
-- [ ] "Recent activity" sort (last-email-seen approximation)
+- [x] Foundation bug fixes: saveNote field clobbering, export getDeviceId error, broken All Notes pagination *(validated by Amir 2026-06-11)*
+- [x] Pin notes to top of All Notes list (kebab/right-click menu) *(validated by Amir 2026-06-11)*
+- [x] Archive notes: collapsible Archived section, thread-view archive button *(validated by Amir 2026-06-11)*
+- [x] Undo toast replacing confirm()/alert() dialogs *(validated by Amir 2026-06-11)*
+- [x] Storage usage meter in Settings *(validated by Amir 2026-06-11)*
+- [x] Search term highlighting *(validated by Amir 2026-06-11)*
+- [x] "Recent activity" sort (last-email-seen approximation) *(validated by Amir 2026-06-11)*
+- [ ] Round 2 (pending user test): clickable/auto-linked URLs in editor, thread-view Pin button, search deep-match fix, search clear button, visual polish pass
 - [ ] Repo migration out of iCloud + stable extension ID (Phase 4 runbook)
+- [ ] Merge feature/v2.8-pins-archive to main + version bump to 2.8.0
 
 ## 🚀 Immediate Next Steps
 

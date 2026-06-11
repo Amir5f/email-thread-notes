@@ -156,6 +156,15 @@ so `pinned`/`archived`/`importedAt`/original `timestamp` survive the 1-second au
 - [ ] Storage meter shows plausible numbers and updates after adding a note
 - [ ] Search highlight visible in LTR + Hebrew notes; no broken layout
 
+### Round 2 (user-requested after Phase 1–3 validation) — all ✅ done
+- **T2.4 — Clickable links in editor** ✅ Sonnet: Ctrl/Cmd+click opens http(s) links via chrome.tabs.create (javascript: hrefs blocked); pasting a bare URL auto-creates a link (wraps selection if any). Required new bundle exports (`prosePluginsCtx`, `Plugin`, `PluginKey`) + `npm run build`.
+- **T2.5 — Pin toggle in Thread view footer** ✅ Haiku: mirrors the archive toggle (Save · Pin · Archive · Delete).
+- **T2.6 — Search deep-match fix** ✅ Fable: previews are whitespace-collapsed during search so the 2-line clamp can't hide matches past the first newlines; window threshold tightened to 40 chars.
+- **T2.7 — Search clear (×) button** ✅ Haiku: appears when the box has text; clears, refilters, refocuses.
+- **T2.8 — Visual polish pass** ✅ Sonnet: unified transition tokens + focus-visible rings, surface elevation/inset highlights, hover lift, toast/menu entrance animations, uppercase micro-labels, normalized chips, thin auto-hiding scrollbars, status-dot pulse. CSS-only.
+
+> **User validation:** Phase 1, 2 and 3 checklists confirmed by Amir on 2026-06-11. Round 2 pending user test.
+
 ---
 
 ## Phase 3 — "Recent activity" sort (approximation)
