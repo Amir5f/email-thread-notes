@@ -13,6 +13,7 @@ class EmailNotesSidebar {
     this.milkdownEditor = null; // Milkdown editor instance
     this.rtlObserver = null; // MutationObserver for RTL detection
     this.currentNoteArchived = false;
+    this.currentNotePinned = false;
 
     // Promise to track when Milkdown editor is fully initialized
     this.editorReadyPromise = null;
@@ -78,6 +79,14 @@ class EmailNotesSidebar {
     saveBtn.addEventListener('click', () => {
       this.saveCurrentNoteImmediately();
     });
+
+    // Pin button handler
+    const pinBtn = document.getElementById('pinNoteBtn');
+    if (pinBtn) {
+      pinBtn.addEventListener('click', () => {
+        this.togglePinCurrentNote();
+      });
+    }
 
     // Archive button handler
     const archiveBtn = document.getElementById('archiveNoteBtn');
@@ -704,6 +713,10 @@ class EmailNotesSidebar {
         this.currentNoteArchived = !!response.note.archived;
         this.updateArchiveButtonState(true, this.currentNoteArchived);
 
+        // Set pin state
+        this.currentNotePinned = !!response.note.pinned;
+        this.updatePinButtonState(true, this.currentNotePinned);
+
         if (this.milkdownEditor) {
           // Set markdown content in Milkdown (editor is guaranteed to be ready now)
           console.log('Calling setMarkdown with content...');
@@ -743,6 +756,10 @@ class EmailNotesSidebar {
         // Reset archive state
         this.currentNoteArchived = false;
         this.updateArchiveButtonState(false, false);
+
+        // Reset pin state
+        this.currentNotePinned = false;
+        this.updatePinButtonState(false, false);
 
         if (this.milkdownEditor) {
           console.log('Calling setMarkdown with empty string...');
@@ -1867,6 +1884,10 @@ class EmailNotesSidebar {
     this.currentNoteArchived = !!noteData.archived;
     this.updateArchiveButtonState(true, this.currentNoteArchived);
 
+    // Set pin state
+    this.currentNotePinned = !!noteData.pinned;
+    this.updatePinButtonState(true, this.currentNotePinned);
+
     const content = noteData.content || '';
     if (this.milkdownEditor) {
       try {
@@ -1967,6 +1988,10 @@ class EmailNotesSidebar {
           this.currentNoteArchived = false;
           this.updateArchiveButtonState(false, false);
 
+          // Reset pin state
+          this.currentNotePinned = false;
+          this.updatePinButtonState(false, false);
+
           // Clear last updated timestamp
           const lastUpdated = document.getElementById('lastUpdated');
           lastUpdated.textContent = '';
@@ -2017,6 +2042,9 @@ class EmailNotesSidebar {
 
         // Enable archive button if it was previously disabled (new note)
         this.updateArchiveButtonState(true, this.currentNoteArchived);
+
+        // Enable pin button if it was previously disabled (new note)
+        this.updatePinButtonState(true, this.currentNotePinned);
 
         // Refresh All Notes list if it's loaded
         if (this.allNotes) {
@@ -2120,6 +2148,10 @@ class EmailNotesSidebar {
         this.currentNoteArchived = false;
         this.updateArchiveButtonState(false, false);
 
+        // Reset pin state
+        this.currentNotePinned = false;
+        this.updatePinButtonState(false, false);
+
         this.updateSaveStatus('saved', 'Note deleted');
 
         // Return to ready state after 2 seconds
@@ -2145,6 +2177,7 @@ class EmailNotesSidebar {
               if (this.currentView === 'thread' && this.currentThreadId === threadId) {
                 await this.loadThreadNotes();
                 this.updateArchiveButtonState(true, !!savedNote.archived);
+                this.updatePinButtonState(true, !!savedNote.pinned);
               }
               // Always refresh the list
               if (this.allNotes) {
@@ -2248,6 +2281,50 @@ class EmailNotesSidebar {
       }
     } catch (error) {
       console.error('Error toggling archive:', error);
+    }
+  }
+
+  updatePinButtonState(noteExists, pinned) {
+    const pinBtn = document.getElementById('pinNoteBtn');
+    if (!pinBtn) return;
+
+    pinBtn.disabled = !noteExists;
+
+    if (pinned) {
+      pinBtn.classList.add('active');
+      pinBtn.title = 'Unpin note';
+    } else {
+      pinBtn.classList.remove('active');
+      pinBtn.title = 'Pin note';
+    }
+  }
+
+  async togglePinCurrentNote() {
+    if (!this.currentThreadId) return;
+
+    const threadId = this.currentThreadId;
+    const wasPinned = this.currentNotePinned;
+
+    try {
+      const response = await chrome.runtime.sendMessage({
+        action: 'updateNoteFields',
+        threadId,
+        fields: { pinned: !wasPinned }
+      });
+
+      if (response && response.success) {
+        this.currentNotePinned = !!response.noteData?.pinned;
+        this.updatePinButtonState(true, this.currentNotePinned);
+
+        // Refresh All Notes data if loaded
+        if (this.allNotes) {
+          this.loadAllNotesView();
+        }
+      } else {
+        console.error('Failed to update pin state:', response?.error);
+      }
+    } catch (error) {
+      console.error('Error toggling pin:', error);
     }
   }
 
