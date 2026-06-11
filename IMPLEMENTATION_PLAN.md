@@ -123,7 +123,7 @@ so `pinned`/`archived`/`importedAt`/original `timestamp` survive the 1-second au
 
 ## Phase 2 — UX round
 
-### T2.1 — Undo toast (replace `confirm()`/`alert()`) ⬜ `Sonnet`
+### T2.1 — Undo toast (replace `confirm()`/`alert()`) ✅ done — Sonnet (validated)
 - **Files:** `src/sidebar.js`, `src/sidebar.html` (toast container + styles), `src/background.js` (one new action)
 - **Spec:**
   - Single reusable toast at the bottom of the panel: message + `Undo` button, auto-dismisses after 5s with a subtle countdown affordance; new toast replaces the previous one (flush its pending action first).
@@ -133,7 +133,7 @@ so `pinned`/`archived`/`importedAt`/original `timestamp` survive the 1-second au
   - Remove the `alert()` calls in `openThread`/`deleteNoteFromList` error paths — surface errors via the toast (no Undo button).
 - **Acceptance:** no native dialogs remain in sidebar.js; undo restores the note byte-identical (content, flags, timestamps); toast works from both views; rapid delete-delete-undo only restores the latest.
 
-### T2.2 — Storage usage meter in Settings ⬜ `Haiku`
+### T2.2 — Storage usage meter in Settings ✅ done — Haiku (validated)
 - **Files:** `src/sidebar.html` (settings panel section), `src/sidebar.js` (`toggleSettings`)
 - **Spec:**
   - New settings section "Storage" with a horizontal bar + label `X KB of 100 KB used (Y%)`.
@@ -141,7 +141,7 @@ so `pinned`/`archived`/`importedAt`/original `timestamp` survive the 1-second au
   - Handle the `usage: null` error case with a quiet "Usage unavailable" label.
 - **Acceptance:** numbers match `chrome.storage.sync.getBytesInUse()`; refreshes every time settings opens; no layout break in the settings panel.
 
-### T2.3 — Search term highlighting ⬜ `Sonnet`
+### T2.3 — Search term highlighting ✅ done — Sonnet (validated)
 - **Files:** `src/sidebar.js` (`displayAllNotes` card HTML, `addNotesListStyles`)
 - **Spec:**
   - When a search term is active, wrap case-insensitive matches in subject and preview with `<mark>`.
@@ -160,7 +160,7 @@ so `pinned`/`archived`/`importedAt`/original `timestamp` survive the 1-second au
 
 ## Phase 3 — "Recent activity" sort (approximation)
 
-### T3.1 — Scrape last-email timestamp on thread visit ⬜ `Opus`
+### T3.1 — Scrape last-email timestamp on thread visit ✅ done — Opus (validated; Outlook selectors are best-effort heuristics)
 - **Files:** `src/gmail-sidebar.js`, `src/outlook-sidebar.js`, `src/sidebar.js`, (uses T0.4 backend)
 - **Why Opus:** fragile DOM scraping against two email clients that change markup frequently, plus messaging plumbing — needs judgment about selector resilience and graceful failure.
 - **Spec:**
@@ -170,7 +170,7 @@ so `pinned`/`archived`/`importedAt`/original `timestamp` survive the 1-second au
   - Scrape may need a short delay/retry after thread load (Gmail renders lazily) — bounded, max ~2 attempts.
 - **Acceptance:** visiting an old thread updates `lastEmailSeen`; failure mode is silent and non-fatal; no polling loops beyond the existing 1s URL check; no new permissions.
 
-### T3.2 — Sort option "Recent activity" ⬜ `Haiku`
+### T3.2 — Sort option "Recent activity" ✅ done — Haiku (validated)
 - **Depends on:** T3.1
 - **Files:** `src/sidebar.html` (sortFilter `<option value="activity">`), `src/sidebar.js` (sort switch)
 - **Spec:** label `Recent activity`; sorts by `lastEmailSeen ?? lastModified` descending. Add `title` on the option/select noting it reflects activity as of your last visit to each thread.
@@ -234,11 +234,11 @@ if iCloud regenerates any before the move, delete them again the same way.
 | T1.2 | Pinned + Archived rendering | Sonnet | ✅ done |
 | T1.3 | Kebab + context menu | Sonnet | ✅ done |
 | T1.4 | Thread-view archive button | Haiku | ✅ done |
-| T2.1 | Undo toast | Sonnet | ⬜ |
-| T2.2 | Storage meter | Haiku | ⬜ |
-| T2.3 | Search highlighting | Sonnet | ⬜ |
-| T3.1 | Last-email scraping | Opus | ⬜ |
-| T3.2 | Activity sort option | Haiku | ⬜ |
+| T2.1 | Undo toast | Sonnet | ✅ done |
+| T2.2 | Storage meter | Haiku | ✅ done |
+| T2.3 | Search highlighting | Sonnet | ✅ done |
+| T3.1 | Last-email scraping | Opus | ✅ done |
+| T3.2 | Activity sort option | Haiku | ✅ done |
 | T4 | Repo migration runbook | manual | ⬜ |
 | T5.1 | Docs/backlog update | Haiku | ⬜ |
 | T5.2 | Version bump + commits | Fable+user | ⬜ |
