@@ -39,9 +39,9 @@ class GmailSidebarConnector {
         setTimeout(() => this.detectCurrentThread(), 100);
       }
     };
-    
+
     setInterval(checkUrlChange, 1000);
-    
+
     // Initial detection
     this.detectCurrentThread();
   }

@@ -16,6 +16,12 @@ class EmailNotesSidebar {
     this.editorReadyPromise = null;
     this.resolveEditorReady = null;
 
+    // Infinite scroll state
+    this.notesPerPage = 20;
+    this.currentNotesPage = 0;
+    this.filteredNotes = [];
+    this.isLoadingMore = false;
+
     this.init();
   }
 
@@ -667,6 +673,11 @@ class EmailNotesSidebar {
             editorRoot.style.visibility = 'visible';
             editorRoot.style.opacity = '1';
           }
+
+          // Critical: Detect direction after loading content to ensure RTL lists render correctly
+          setTimeout(() => {
+            this.detectAndSetTextDirection();
+          }, 50);
         } else if (this.fallbackEditor) {
           // Fallback: plain text
           this.fallbackEditor.value = content;
@@ -747,9 +758,12 @@ class EmailNotesSidebar {
         return;
       }
       
-      // Store all notes for filtering
-      this.allNotes = Object.entries(response.notes);
-      
+      // Store all notes for filtering, excluding empty/null notes
+      this.allNotes = Object.entries(response.notes).filter(([threadId, noteData]) => {
+        // Filter out notes with no content or null content
+        return noteData && noteData.content && noteData.content.trim().length > 0;
+      });
+
       // Apply current filters and display
       this.filterAndDisplayNotes();
       
@@ -882,11 +896,19 @@ class EmailNotesSidebar {
     `;
   }
 
-  displayAllNotes(noteEntries) {
+  displayAllNotes(noteEntries, resetList = false) {
     const notesContent = document.querySelector('#allNotesView .notes-content');
     const noteMap = new Map(noteEntries);
 
-    const notesHtml = noteEntries.map(([threadId, noteData]) => {
+    // Calculate which notes to display
+    const startIndex = resetList ? 0 : this.currentNotesPage * this.notesPerPage;
+    const endIndex = startIndex + this.notesPerPage;
+    const notesToDisplay = noteEntries.slice(startIndex, endIndex);
+    const hasMore = endIndex < noteEntries.length;
+
+    console.log(`📄 Displaying notes ${startIndex}-${endIndex} of ${noteEntries.length}`);
+
+    const notesHtml = notesToDisplay.map(([threadId, noteData]) => {
       // Extract text content from markdown for preview
       const cleanContent = this.extractTextFromMarkdown(noteData.content);
       const preview = cleanContent.length > 100
@@ -989,7 +1011,7 @@ class EmailNotesSidebar {
       
       .notes-count {
         font-size: 11px;
-        color: #5f6368;
+        color: var(--text-muted);
         font-weight: 500;
       }
       
@@ -1006,7 +1028,7 @@ class EmailNotesSidebar {
       }
 
       .notes-list:hover {
-        scrollbar-color: #c5c8cc transparent;
+        scrollbar-color: var(--bg-hover) transparent;
       }
 
       .notes-list::-webkit-scrollbar {
@@ -1019,30 +1041,30 @@ class EmailNotesSidebar {
       }
 
       .notes-list:hover::-webkit-scrollbar-thumb {
-        background-color: #c5c8cc;
+        background-color: var(--bg-hover);
       }
       
       .note-item {
         padding: 12px 14px;
-        border: 1px solid #e5e7eb;
+        border: 1px solid var(--border-color);
         border-radius: 12px;
         cursor: pointer;
         transition: background-color 0.2s, border-color 0.2s, box-shadow 0.2s;
-        background: #ffffff;
+        background: var(--bg-panel);
         width: 100%;
-        box-shadow: 0 1px 2px rgba(15, 23, 42, 0.05);
+        box-shadow: 0 1px 2px rgba(0, 0, 0, 0.2);
       }
       
       .note-item:hover {
-        background-color: #fefefe;
-        border-color: #d5d9df;
-        box-shadow: 0 4px 10px rgba(15, 23, 42, 0.08);
+        background-color: var(--bg-hover);
+        border-color: var(--text-muted);
+        box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
       }
       
       .note-item.active {
-        border-color: #818cf8;
-        box-shadow: 0 0 0 2px rgba(99, 102, 241, 0.15);
-        background: #f5f5ff;
+        border-color: var(--accent-color);
+        box-shadow: 0 0 0 2px var(--accent-dim);
+        background: var(--bg-hover);
       }
       
       .note-header {
@@ -1054,7 +1076,7 @@ class EmailNotesSidebar {
       
       .note-subject {
         font-weight: 500;
-        color: #202124;
+        color: var(--text-main);
         font-size: 13px;
         flex: 1;
         truncate: ellipsis;
@@ -1064,8 +1086,9 @@ class EmailNotesSidebar {
       
       .note-platform {
         font-size: 10px;
-        color: #5f6368;
-        background: #e8f0fe;
+        color: var(--text-muted);
+        background: var(--bg-app);
+        border: 1px solid var(--border-color);
         padding: 2px 6px;
         border-radius: 8px;
         text-transform: capitalize;
@@ -1086,13 +1109,13 @@ class EmailNotesSidebar {
         display: flex;
         align-items: center;
         justify-content: center;
-        color: #5f6368;
+        color: var(--text-muted);
         transition: background 0.2s ease, color 0.2s ease;
       }
 
       .note-open-btn:hover {
-        background: #e8eaed;
-        color: #1a73e8;
+        background: var(--bg-hover);
+        color: var(--accent-color);
       }
 
       .note-open-icon {
@@ -1102,10 +1125,15 @@ class EmailNotesSidebar {
       }
       
       .note-preview {
-        color: #5f6368;
+        color: var(--text-muted);
         font-size: 12px;
         line-height: 1.4;
         margin-bottom: 6px;
+        white-space: pre-wrap;
+        display: -webkit-box;
+        -webkit-line-clamp: 2;
+        -webkit-box-orient: vertical;
+        overflow: hidden;
       }
 
       .note-preview.rtl {
@@ -1114,8 +1142,9 @@ class EmailNotesSidebar {
       }
       
       .note-timestamp {
-        color: #9aa0a6;
+        color: var(--text-muted);
         font-size: 11px;
+        opacity: 0.8;
       }
     `;
     
@@ -1386,6 +1415,10 @@ class EmailNotesSidebar {
     if (this.milkdownEditor) {
       try {
         await this.milkdownEditor.setMarkdown(content);
+        // Critical: Detect direction after loading content
+        setTimeout(() => {
+          this.detectAndSetTextDirection();
+        }, 50);
       } catch (error) {
         console.error('Error preloading Milkdown content:', error);
       }
@@ -1463,6 +1496,37 @@ class EmailNotesSidebar {
       }
 
       this.updateSaveStatus('saving', 'Saving...');
+
+      // If content is empty, delete the note instead of saving
+      if (!content) {
+        const response = await chrome.runtime.sendMessage({
+          action: 'deleteNote',
+          threadId: this.currentThreadId
+        });
+
+        if (response.success) {
+          this.updateSaveStatus('saved', 'Note cleared');
+
+          // Clear last updated timestamp
+          const lastUpdated = document.getElementById('lastUpdated');
+          lastUpdated.textContent = '';
+
+          // Refresh All Notes list if it's loaded
+          if (this.allNotes) {
+            this.loadAllNotesView();
+          }
+
+          setTimeout(() => {
+            this.updateSaveStatus('ready', 'Ready');
+          }, 2000);
+        } else {
+          this.updateSaveStatus('error', 'Clear failed');
+          setTimeout(() => {
+            this.updateSaveStatus('ready', 'Ready');
+          }, 3000);
+        }
+        return;
+      }
 
       // Get current thread subject for storage
       const subject = this.getCurrentThreadSubject();
@@ -1820,6 +1884,8 @@ class EmailNotesSidebar {
         console.log('Setting RTL direction');
         rootElement.style.direction = 'rtl';
         rootElement.style.textAlign = 'right';
+        rootElement.classList.add('rtl-content');
+        rootElement.classList.remove('ltr-content');
 
         // Also set on ProseMirror editor and all paragraphs
         const pmEditor = rootElement.querySelector('.ProseMirror');
@@ -1838,6 +1904,8 @@ class EmailNotesSidebar {
         console.log('Setting LTR direction');
         rootElement.style.direction = 'ltr';
         rootElement.style.textAlign = 'left';
+        rootElement.classList.add('ltr-content');
+        rootElement.classList.remove('rtl-content');
 
         // Also set on ProseMirror editor
         const pmEditor = rootElement.querySelector('.ProseMirror');
@@ -2034,8 +2102,6 @@ class EmailNotesSidebar {
       .replace(/\*(.+?)\*/g, '$1') // Remove italic
       .replace(/\[(.+?)\]\(.+?\)/g, '$1') // Remove links, keep text
       .replace(/`(.+?)`/g, '$1') // Remove inline code
-      .replace(/^[-*+]\s+/gm, '') // Remove list markers
-      .replace(/^\d+\.\s+/gm, '') // Remove numbered list markers
       .replace(/^>\s+/gm, ''); // Remove blockquotes
 
     return text.trim();
