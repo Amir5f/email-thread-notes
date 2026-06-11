@@ -104,11 +104,26 @@ class EmailNotesSidebar {
 
     // Search and filter handlers for All Notes view
     const searchInput = document.getElementById('notesSearchInput');
+    const clearSearchBtn = document.getElementById('clearSearchBtn');
     const sortFilter = document.getElementById('sortFilter');
 
     searchInput.addEventListener('input', () => {
+      // Toggle clear button visibility
+      if (clearSearchBtn) {
+        clearSearchBtn.style.display = searchInput.value ? 'flex' : 'none';
+      }
       this.filterAndDisplayNotes();
     });
+
+    // Clear search button handler
+    if (clearSearchBtn) {
+      clearSearchBtn.addEventListener('click', () => {
+        searchInput.value = '';
+        clearSearchBtn.style.display = 'none';
+        this.filterAndDisplayNotes();
+        searchInput.focus();
+      });
+    }
 
     sortFilter.addEventListener('change', () => {
       this.filterAndDisplayNotes();
@@ -206,8 +221,12 @@ class EmailNotesSidebar {
       // Escape to clear search
       if (e.key === 'Escape') {
         const searchInput = document.getElementById('notesSearchInput');
+        const clearSearchBtn = document.getElementById('clearSearchBtn');
         if (searchInput && searchInput === document.activeElement) {
           searchInput.value = '';
+          if (clearSearchBtn) {
+            clearSearchBtn.style.display = 'none';
+          }
           this.filterAndDisplayNotes();
           searchInput.blur();
         }
