@@ -2,7 +2,78 @@
 // This file contains the Milkdown initialization code to replace Quill
 
 // Import from bundled version (no bare imports, CSP-compatible)
-import { Editor, rootCtx, defaultValueCtx, editorViewCtx, commonmark, nord, listener, listenerCtx } from '../lib/milkdown-bundle.js';
+import { Editor, rootCtx, defaultValueCtx, editorViewCtx, prosePluginsCtx, commonmark, nord, listener, listenerCtx, Plugin, PluginKey } from '../lib/milkdown-bundle.js';
+
+// ProseMirror plugin: open links with Ctrl/Cmd+click
+function linkClickPlugin() {
+  return new Plugin({
+    key: new PluginKey('linkClick'),
+    props: {
+      handleClickOn(view, pos, node, nodePos, event) {
+        if (!event.ctrlKey && !event.metaKey) return false;
+        // Guard: link mark must exist in schema
+        if (!view.state.schema.marks.link) return false;
+        const linkMark = node?.marks?.find(m => m.type === view.state.schema.marks.link);
+        if (!linkMark) return false;
+        const href = linkMark.attrs.href || '';
+        // Security: only open http(s) URLs — markdown can carry javascript: hrefs
+        if (!/^https?:\/\//i.test(href)) return false;
+        try {
+          if (typeof chrome !== 'undefined' && chrome.tabs?.create) {
+            chrome.tabs.create({ url: href });
+          } else {
+            window.open(href, '_blank', 'noopener');
+          }
+        } catch (e) {
+          console.error('Could not open link:', e);
+        }
+        return true;
+      }
+    }
+  });
+}
+
+// ProseMirror plugin: auto-link pasted URLs
+function pasteLinkPlugin() {
+  return new Plugin({
+    key: new PluginKey('pasteLink'),
+    props: {
+      handlePaste(view, event) {
+        try {
+          const text = event.clipboardData?.getData('text/plain')?.trim();
+          if (!text) return false;
+          // Only act when the pasted text is a single bare URL
+          if (!/^https?:\/\/\S+$/i.test(text)) return false;
+
+          const { state, dispatch } = view;
+          const schema = state.schema;
+          // Guard: link mark must exist in schema
+          if (!schema.marks.link) return false;
+
+          const url = text;
+          const { from, to, empty } = state.selection;
+          const tr = state.tr;
+
+          if (!empty) {
+            // Wrap selected text in a link mark
+            tr.addMark(from, to, schema.marks.link.create({ href: url }));
+          } else {
+            // Insert the URL as linked text at cursor
+            tr.replaceSelectionWith(
+              schema.text(url, [schema.marks.link.create({ href: url })]),
+              false
+            );
+          }
+          dispatch(tr);
+          return true;
+        } catch (e) {
+          console.error('pasteLinkPlugin error:', e);
+          return false; // Fall back to default paste
+        }
+      }
+    }
+  });
+}
 
 export async function initMilkdownEditor(container, initialContent = '', onChange) {
   try {
@@ -32,6 +103,13 @@ export async function initMilkdownEditor(container, initialContent = '', onChang
         .config((ctx) => {
           ctx.set(rootCtx, container);
           ctx.set(defaultValueCtx, content);
+
+          // Register ProseMirror plugins for link click and paste-to-link
+          ctx.update(prosePluginsCtx, (plugins) => [
+            ...plugins,
+            linkClickPlugin(),
+            pasteLinkPlugin(),
+          ]);
 
           // Set up change listener
           ctx.get(listenerCtx).markdownUpdated((ctx, markdown, prevMarkdown) => {
