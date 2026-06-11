@@ -1242,17 +1242,19 @@ class EmailNotesSidebar {
     style.textContent = `
       .notes-list-header {
         padding: 4px 0 8px 0;
-        border-bottom: 1px solid #e8eaed;
+        border-bottom: 1px solid var(--border-color);
         margin-bottom: 6px;
         display: flex;
         align-items: center;
         justify-content: space-between;
       }
-      
+
       .notes-count {
-        font-size: 11px;
+        font-size: 10px;
+        font-weight: 600;
+        letter-spacing: 0.06em;
+        text-transform: uppercase;
         color: var(--text-muted);
-        font-weight: 500;
       }
       
       .notes-list {
@@ -1287,23 +1289,28 @@ class EmailNotesSidebar {
       .note-item {
         padding: 12px 14px;
         border: 1px solid var(--border-color);
-        border-radius: 12px;
+        border-radius: 10px;
         cursor: pointer;
-        transition: background-color 0.2s, border-color 0.2s, box-shadow 0.2s;
+        transition: background-color 0.2s cubic-bezier(0.2, 0, 0, 1), border-color 0.2s cubic-bezier(0.2, 0, 0, 1), box-shadow 0.2s cubic-bezier(0.2, 0, 0, 1), transform 0.15s cubic-bezier(0.2, 0, 0, 1);
         background: var(--bg-panel);
         width: 100%;
-        box-shadow: 0 1px 2px rgba(0, 0, 0, 0.2);
+        box-shadow: inset 0 1px 0 rgba(255,255,255,0.03), 0 1px 2px rgba(0, 0, 0, 0.2);
       }
-      
+
       .note-item:hover {
         background-color: var(--bg-hover);
         border-color: var(--text-muted);
-        box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+        box-shadow: inset 0 1px 0 rgba(255,255,255,0.04), 0 4px 12px rgba(0, 0, 0, 0.3);
+        transform: translateY(-1px);
       }
-      
+
+      .note-item:active {
+        transform: translateY(0);
+      }
+
       .note-item.active {
         border-color: var(--accent-color);
-        box-shadow: 0 0 0 2px var(--accent-dim);
+        box-shadow: inset 0 1px 0 rgba(255,255,255,0.04), 0 0 0 2px var(--accent-dim);
         background: var(--bg-hover);
       }
       
@@ -1326,12 +1333,18 @@ class EmailNotesSidebar {
       
       .note-platform {
         font-size: 10px;
+        font-weight: 500;
+        letter-spacing: 0.03em;
         color: var(--text-muted);
-        background: var(--bg-app);
+        background: rgba(24, 24, 27, 0.7); /* --bg-app at 70% */
         border: 1px solid var(--border-color);
         padding: 2px 6px;
+        height: 18px;
+        line-height: 14px;
         border-radius: 8px;
         text-transform: capitalize;
+        display: inline-flex;
+        align-items: center;
       }
 
       .note-meta {
@@ -1350,12 +1363,21 @@ class EmailNotesSidebar {
         align-items: center;
         justify-content: center;
         color: var(--text-muted);
-        transition: background 0.2s ease, color 0.2s ease;
+        transition: background 0.2s cubic-bezier(0.2, 0, 0, 1), color 0.2s cubic-bezier(0.2, 0, 0, 1), transform 0.15s cubic-bezier(0.2, 0, 0, 1);
       }
 
       .note-open-btn:hover {
         background: var(--bg-hover);
         color: var(--accent-color);
+      }
+
+      .note-open-btn:active {
+        transform: scale(0.92);
+      }
+
+      .note-open-btn:focus-visible {
+        outline: none;
+        box-shadow: 0 0 0 2px var(--accent-dim);
       }
 
       .note-open-icon {
@@ -1407,8 +1429,9 @@ class EmailNotesSidebar {
 
       .note-archived-chip {
         color: var(--text-muted);
-        background: var(--bg-app);
+        background: rgba(24, 24, 27, 0.7); /* --bg-app at 70% */
         border: 1px solid var(--border-color);
+        font-style: italic;
       }
 
       /* --- Archived section header --- */
@@ -1416,14 +1439,16 @@ class EmailNotesSidebar {
         display: flex;
         align-items: center;
         gap: 5px;
-        font-size: 11px;
-        font-weight: 500;
+        font-size: 10px;
+        font-weight: 600;
+        letter-spacing: 0.05em;
+        text-transform: uppercase;
         color: var(--text-muted);
         cursor: pointer;
         padding: 6px 4px 4px;
         border-radius: 6px;
         user-select: none;
-        transition: background-color 0.15s;
+        transition: background-color 0.15s cubic-bezier(0.2, 0, 0, 1);
         outline: none;
       }
 
@@ -1439,7 +1464,7 @@ class EmailNotesSidebar {
         width: 13px;
         height: 13px;
         flex-shrink: 0;
-        transition: transform 0.2s ease;
+        transition: transform 0.2s cubic-bezier(0.2, 0, 0, 1);
       }
 
       /* --- Archived notes container --- */
@@ -1462,7 +1487,7 @@ class EmailNotesSidebar {
         justify-content: center;
         color: var(--text-muted);
         opacity: 0.35;
-        transition: background 0.2s ease, color 0.2s ease, opacity 0.2s ease;
+        transition: background 0.2s cubic-bezier(0.2, 0, 0, 1), color 0.2s cubic-bezier(0.2, 0, 0, 1), opacity 0.15s cubic-bezier(0.2, 0, 0, 1), transform 0.15s cubic-bezier(0.2, 0, 0, 1);
         flex-shrink: 0;
       }
 
@@ -1472,9 +1497,31 @@ class EmailNotesSidebar {
         opacity: 1;
       }
 
+      .note-kebab-btn:active {
+        transform: scale(0.92);
+      }
+
+      .note-kebab-btn:focus-visible {
+        outline: none;
+        box-shadow: 0 0 0 2px var(--accent-dim);
+        opacity: 1;
+      }
+
       .note-item:hover .note-kebab-btn,
       .note-item:focus-within .note-kebab-btn {
         opacity: 1;
+      }
+
+      /* --- Context menu entrance --- */
+      @keyframes contextMenuIn {
+        from {
+          opacity: 0;
+          transform: scale(0.95);
+        }
+        to {
+          opacity: 1;
+          transform: scale(1);
+        }
       }
 
       /* --- Context menu surface --- */
@@ -1483,12 +1530,14 @@ class EmailNotesSidebar {
         background: var(--bg-panel);
         border: 1px solid var(--border-color);
         border-radius: 8px;
-        box-shadow: 0 4px 12px rgba(0, 0, 0, 0.4);
+        box-shadow: inset 0 1px 0 rgba(255,255,255,0.04), 0 6px 20px rgba(0, 0, 0, 0.5);
         min-width: 140px;
         font-size: 13px;
         z-index: 10002;
         padding: 4px 0;
         font-family: inherit;
+        transform-origin: top;
+        animation: contextMenuIn 0.12s cubic-bezier(0.2, 0, 0, 1) both;
       }
 
       /* --- Context menu items --- */
@@ -1499,7 +1548,7 @@ class EmailNotesSidebar {
         padding: 7px 12px;
         cursor: pointer;
         color: var(--text-main);
-        transition: background-color 0.15s ease, color 0.15s ease;
+        transition: background-color 0.15s cubic-bezier(0.2, 0, 0, 1), color 0.15s cubic-bezier(0.2, 0, 0, 1);
         white-space: nowrap;
         user-select: none;
       }
@@ -1507,6 +1556,12 @@ class EmailNotesSidebar {
       .context-menu-item:hover {
         background-color: var(--bg-hover);
         color: var(--accent-color);
+      }
+
+      .context-menu-item:focus-visible {
+        outline: none;
+        background-color: var(--bg-hover);
+        box-shadow: inset 0 0 0 2px var(--accent-dim);
       }
 
       .context-menu-item svg {
