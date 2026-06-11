@@ -49,9 +49,9 @@ Full task breakdown, model assignments, and phase test checklists: see `IMPLEMEN
 - [x] Storage usage meter in Settings *(validated by Amir 2026-06-11)*
 - [x] Search term highlighting *(validated by Amir 2026-06-11)*
 - [x] "Recent activity" sort (last-email-seen approximation) *(validated by Amir 2026-06-11)*
-- [ ] Round 2 (pending user test): clickable/auto-linked URLs in editor, thread-view Pin button, search deep-match fix, search clear button, visual polish pass
-- [ ] Repo migration out of iCloud + stable extension ID (Phase 4 runbook)
-- [ ] Merge feature/v2.8-pins-archive to main + version bump to 2.8.0
+- [x] Round 2: clickable/auto-linked URLs in editor, thread-view Pin button, search deep-match fix, search clear button, visual polish pass *(validated by Amir 2026-06-11)*
+- [x] Repo migration out of iCloud + stable extension ID (Phase 4 complete 2026-06-11)
+- [x] Merge feature/v2.8-pins-archive to main + version bump to 2.8.0
 
 ## 🚀 Immediate Next Steps
 
@@ -99,9 +99,9 @@ Full task breakdown, model assignments, and phase test checklists: see `IMPLEMEN
 
 ## 📊 Current Status
 
-**Version**: v2.2.0 (Chrome Storage Sync Migration)
-**Status**: Production ready with automatic cross-device synchronization
-**Next Milestone**: v2.3.0 (Advanced Features & Performance)
+**Version**: v2.8.0
+**Status**: Production ready — pins, archive, undo toast, storage meter, search highlighting, activity sort, visual polish
+**Next Milestone**: v2.9.0 (Advanced Features & Performance)
 
 **Architecture**: Chrome Side Panel API with simplified content scripts
 **Platforms**: Gmail and Outlook web clients

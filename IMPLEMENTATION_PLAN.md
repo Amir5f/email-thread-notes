@@ -163,7 +163,7 @@ so `pinned`/`archived`/`importedAt`/original `timestamp` survive the 1-second au
 - **T2.7 — Search clear (×) button** ✅ Haiku: appears when the box has text; clears, refilters, refocuses.
 - **T2.8 — Visual polish pass** ✅ Sonnet: unified transition tokens + focus-visible rings, surface elevation/inset highlights, hover lift, toast/menu entrance animations, uppercase micro-labels, normalized chips, thin auto-hiding scrollbars, status-dot pulse. CSS-only.
 
-> **User validation:** Phase 1, 2 and 3 checklists confirmed by Amir on 2026-06-11. Round 2 pending user test.
+> **User validation:** All phases and Round 2 tasks confirmed by Amir on 2026-06-11. Released as v2.8.0.
 
 ---
 
@@ -248,6 +248,6 @@ if iCloud regenerates any before the move, delete them again the same way.
 | T2.3 | Search highlighting | Sonnet | ✅ done |
 | T3.1 | Last-email scraping | Opus | ✅ done |
 | T3.2 | Activity sort option | Haiku | ✅ done |
-| T4 | Repo migration runbook | manual | ⬜ |
-| T5.1 | Docs/backlog update | Haiku | ⬜ |
-| T5.2 | Version bump + commits | Fable+user | ⬜ |
+| T4 | Repo migration runbook | manual | ✅ done |
+| T5.1 | Docs/backlog update | Fable | ✅ done |
+| T5.2 | Version bump + commits | Fable+user | ✅ done |
