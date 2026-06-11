@@ -580,6 +580,38 @@
       line-height: 1.4;
     }
 
+    .settings-label {
+      font-size: 13px;
+      font-weight: 500;
+      color: var(--text-main);
+      margin-bottom: 8px;
+    }
+
+    .storage-meter {
+      height: 6px;
+      background: var(--bg-app);
+      border: 1px solid var(--border-color);
+      border-radius: 4px;
+      overflow: hidden;
+      margin: 6px 0 4px;
+    }
+
+    .storage-meter-fill {
+      height: 100%;
+      width: 0%;
+      background: var(--accent-color);
+      border-radius: 4px;
+      transition: width 0.3s ease;
+    }
+
+    .storage-meter-fill.warn {
+      background: #fbbf24;
+    }
+
+    .storage-meter-fill.danger {
+      background: #f87171;
+    }
+
     .file-location {
       background: rgba(245, 158, 11, 0.1);
       border: 1px solid rgba(245, 158, 11, 0.2);
@@ -937,6 +969,14 @@
       </button>
       <input type="file" id="importFile" accept=".json" style="display: none;">
       <div class="help-text">Restore notes from backup file</div>
+    </div>
+
+    <div class="settings-section storage-usage">
+      <div class="settings-label">Storage</div>
+      <div class="storage-meter">
+        <div class="storage-meter-fill" id="storageMeterFill"></div>
+      </div>
+      <div class="help-text" id="storageUsageText">Calculating…</div>
     </div>
 
     <div class="settings-section file-location">

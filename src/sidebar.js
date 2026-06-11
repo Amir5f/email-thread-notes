@@ -2218,13 +2218,64 @@ class EmailNotesSidebar {
   toggleSettings() {
     const settingsPanel = document.getElementById('sidebarSettings');
     const settingsToggle = document.getElementById('settingsToggle');
-    
+
     if (settingsPanel.style.display === 'none') {
       settingsPanel.style.display = 'block';
       settingsToggle.classList.add('active');
+      this.refreshStorageUsage();
     } else {
       settingsPanel.style.display = 'none';
       settingsToggle.classList.remove('active');
+    }
+  }
+
+  async refreshStorageUsage() {
+    try {
+      const response = await chrome.runtime.sendMessage({ action: 'getStorageUsage' });
+
+      const fill = document.getElementById('storageMeterFill');
+      const text = document.getElementById('storageUsageText');
+
+      if (!response?.usage) {
+        if (text) {
+          text.textContent = 'Usage unavailable';
+        }
+        if (fill) {
+          fill.style.width = '0%';
+        }
+        return;
+      }
+
+      const { used, quota, percentage } = response.usage;
+
+      const usedKB = (used / 1024).toFixed(1);
+      const quotaKB = Math.round(quota / 1024);
+      const pct = Math.round(percentage);
+
+      if (text) {
+        text.textContent = `${usedKB} KB of ${quotaKB} KB used (${pct}%)`;
+      }
+
+      if (fill) {
+        fill.style.width = `${Math.min(pct, 100)}%`;
+
+        fill.classList.remove('warn', 'danger');
+        if (pct >= 90) {
+          fill.classList.add('danger');
+        } else if (pct >= 80) {
+          fill.classList.add('warn');
+        }
+      }
+    } catch (error) {
+      console.error('Error refreshing storage usage:', error);
+      const text = document.getElementById('storageUsageText');
+      if (text) {
+        text.textContent = 'Usage unavailable';
+      }
+      const fill = document.getElementById('storageMeterFill');
+      if (fill) {
+        fill.style.width = '0%';
+      }
     }
   }
 
