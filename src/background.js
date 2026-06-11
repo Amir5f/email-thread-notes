@@ -14,21 +14,28 @@ class EmailNotesStorage {
   async saveNote(threadId, content, platform = 'gmail', account = null, originalThreadId = null, subject = null, accountEmail = null, accountIndex = null) {
     try {
       console.log('Background: Saving note for threadId:', threadId, 'platform:', platform, 'account:', accountEmail || account, 'content length:', content.length);
-      
-      const noteData = {
-        content: content,
-        timestamp: Date.now(),
-        platform: platform,
-        threadId: threadId,
-        account: account,
-        accountEmail: accountEmail,
-        accountIndex: accountIndex,
-        originalThreadId: originalThreadId,
-        subject: subject,
-        lastModified: Date.now()
-      };
 
       const storageKey = `${this.storagePrefix}${threadId}`;
+
+      // Merge with the existing note so flags set elsewhere (pinned, archived,
+      // importedAt, ...) and the original creation timestamp survive auto-saves.
+      // Identity fields only overwrite when the caller actually provided them.
+      const existingResult = await chrome.storage.sync.get([storageKey]);
+      const existingNote = existingResult[storageKey] || {};
+
+      const noteData = {
+        ...existingNote,
+        content: content,
+        timestamp: existingNote.timestamp || Date.now(),
+        platform: platform || existingNote.platform,
+        threadId: threadId,
+        account: account ?? existingNote.account ?? null,
+        accountEmail: accountEmail ?? existingNote.accountEmail ?? null,
+        accountIndex: accountIndex ?? existingNote.accountIndex ?? null,
+        originalThreadId: originalThreadId ?? existingNote.originalThreadId ?? null,
+        subject: subject ?? existingNote.subject ?? null,
+        lastModified: Date.now()
+      };
       console.log('Background: Using storage key:', storageKey);
 
       // Check quota before saving
@@ -204,6 +211,21 @@ class EmailNotesStorage {
     } catch (error) {
       console.error('Error getting storage usage:', error);
       return null;
+    }
+  }
+
+  // Get or create a persistent device identifier (used for backup provenance)
+  async getDeviceId() {
+    try {
+      const result = await chrome.storage.local.get(['deviceId']);
+      if (result.deviceId) return result.deviceId;
+
+      const deviceId = crypto.randomUUID();
+      await chrome.storage.local.set({ deviceId });
+      return deviceId;
+    } catch (error) {
+      console.error('Error getting device ID:', error);
+      return 'unknown-device';
     }
   }
 

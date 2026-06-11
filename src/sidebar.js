@@ -16,12 +16,6 @@ class EmailNotesSidebar {
     this.editorReadyPromise = null;
     this.resolveEditorReady = null;
 
-    // Infinite scroll state
-    this.notesPerPage = 20;
-    this.currentNotesPage = 0;
-    this.filteredNotes = [];
-    this.isLoadingMore = false;
-
     this.init();
   }
 
@@ -896,19 +890,13 @@ class EmailNotesSidebar {
     `;
   }
 
-  displayAllNotes(noteEntries, resetList = false) {
+  displayAllNotes(noteEntries) {
     const notesContent = document.querySelector('#allNotesView .notes-content');
     const noteMap = new Map(noteEntries);
 
-    // Calculate which notes to display
-    const startIndex = resetList ? 0 : this.currentNotesPage * this.notesPerPage;
-    const endIndex = startIndex + this.notesPerPage;
-    const notesToDisplay = noteEntries.slice(startIndex, endIndex);
-    const hasMore = endIndex < noteEntries.length;
-
-    console.log(`📄 Displaying notes ${startIndex}-${endIndex} of ${noteEntries.length}`);
-
-    const notesHtml = notesToDisplay.map(([threadId, noteData]) => {
+    // Render the full list: chrome.storage.sync caps us at ~100KB / 512 items,
+    // so the list can never grow large enough to need pagination.
+    const notesHtml = noteEntries.map(([threadId, noteData]) => {
       // Extract text content from markdown for preview
       const cleanContent = this.extractTextFromMarkdown(noteData.content);
       const preview = cleanContent.length > 100
