@@ -767,6 +767,27 @@ class EmailNotesSidebar {
     }
   }
 
+  // Returns a comparator over [threadId, noteData] entries for the given sort option.
+  getSortComparator(sortFilter) {
+    return (a, b) => {
+      const [, noteA] = a;
+      const [, noteB] = b;
+
+      switch (sortFilter) {
+        case 'oldest':
+          return (noteA.lastModified || 0) - (noteB.lastModified || 0);
+        case 'subject': {
+          const subjectA = (noteA.subject || 'No Subject').toLowerCase();
+          const subjectB = (noteB.subject || 'No Subject').toLowerCase();
+          return subjectA.localeCompare(subjectB);
+        }
+        case 'recent':
+        default:
+          return (noteB.lastModified || 0) - (noteA.lastModified || 0);
+      }
+    };
+  }
+
   filterAndDisplayNotes() {
     if (!this.allNotes || this.allNotes.length === 0) {
       this.showEmptyAllNotesState();
@@ -819,29 +840,32 @@ class EmailNotesSidebar {
 
     console.log('📊 After filtering:', filteredNotes.length, 'notes');
 
-    // Sort notes
-    filteredNotes.sort((a, b) => {
-      const [, noteA] = a;
-      const [, noteB] = b;
+    // Split into active and archived groups
+    const activeNotes = filteredNotes.filter(([, noteData]) => !noteData.archived);
+    const archivedNotes = filteredNotes.filter(([, noteData]) => !!noteData.archived);
 
-      switch (sortFilter) {
-        case 'oldest':
-          return (noteA.lastModified || 0) - (noteB.lastModified || 0);
-        case 'subject':
-          const subjectA = (noteA.subject || 'No Subject').toLowerCase();
-          const subjectB = (noteB.subject || 'No Subject').toLowerCase();
-          return subjectA.localeCompare(subjectB);
-        case 'recent':
-        default:
-          return (noteB.lastModified || 0) - (noteA.lastModified || 0);
-      }
+    const baseComparator = this.getSortComparator(sortFilter);
+
+    // Sort archived notes with the base comparator
+    archivedNotes.sort(baseComparator);
+
+    // Sort active notes: pinned entries first, then apply selected sort within each group
+    activeNotes.sort((a, b) => {
+      const pinnedA = !!a[1].pinned;
+      const pinnedB = !!b[1].pinned;
+      if (pinnedA !== pinnedB) return pinnedA ? -1 : 1;
+      return baseComparator(a, b);
     });
 
-    // Display filtered notes
-    if (filteredNotes.length === 0) {
-      this.showNoFilterResultsState(searchTerm);
+    // Display filtered notes or appropriate empty state
+    if (activeNotes.length === 0 && archivedNotes.length === 0) {
+      if (searchTerm) {
+        this.showNoFilterResultsState(searchTerm);
+      } else {
+        this.showEmptyAllNotesState();
+      }
     } else {
-      this.displayAllNotes(filteredNotes);
+      this.displayAllNotes({ active: activeNotes, archived: archivedNotes, searchTerm });
     }
   }
 
@@ -890,7 +914,10 @@ class EmailNotesSidebar {
     `;
   }
 
-  displayAllNotes(noteEntries) {
+  displayAllNotes({ active, archived, searchTerm }) {
+    // T1.2 will render the archived section separately; for now merge them in order.
+    const noteEntries = [...active, ...archived];
+
     const notesContent = document.querySelector('#allNotesView .notes-content');
     const noteMap = new Map(noteEntries);
 
@@ -937,9 +964,14 @@ class EmailNotesSidebar {
       `;
     }).join('');
     
+    const activeCount = active.length;
+    const archivedCount = archived.length;
+    const noteCountLabel = `${activeCount} ${activeCount === 1 ? 'note' : 'notes'}` +
+      (archivedCount > 0 ? ` · ${archivedCount} archived` : '');
+
     notesContent.innerHTML = `
       <div class="notes-list-header">
-        <div class="notes-count">${noteEntries.length} saved note${noteEntries.length === 1 ? '' : 's'}</div>
+        <div class="notes-count">${noteCountLabel}</div>
       </div>
       <div class="notes-list">
         ${notesHtml}
