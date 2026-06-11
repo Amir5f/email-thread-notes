@@ -1073,7 +1073,6 @@ class EmailNotesSidebar {
           <div class="note-subject">${pinIconHtml}${this.highlightMatches(subject, searchTerm)}</div>
           <div class="note-meta">
             ${archivedChipHtml}
-            <div class="note-platform">${platform}</div>
             <button class="note-open-btn" title="Open email thread" aria-label="Open email thread">
               <svg class="note-open-icon" viewBox="0 0 24 24">
                 <path d="M7 17L17 7" stroke-width="1.6" fill="none" stroke-linecap="round"></path>
