@@ -914,56 +914,107 @@ class EmailNotesSidebar {
     `;
   }
 
-  displayAllNotes({ active, archived, searchTerm }) {
-    // T1.2 will render the archived section separately; for now merge them in order.
-    const noteEntries = [...active, ...archived];
+  // Builds and returns the HTML string for a single note card.
+  // isArchived = true adds the 'archived' class and the Archived chip.
+  buildNoteCardHtml([threadId, noteData], isArchived = false) {
+    const cleanContent = this.extractTextFromMarkdown(noteData.content);
+    const preview = cleanContent.length > 100
+      ? cleanContent.substring(0, 100) + '...'
+      : cleanContent;
+    const previewClass = this.isRtlText(cleanContent) ? 'note-preview rtl' : 'note-preview';
+    const timestamp = this.formatTimestamp(new Date(noteData.lastModified || noteData.timestamp));
+    const subject = noteData.subject || 'No Subject';
+    const platform = noteData.platform || 'gmail';
+    const originalThreadId = noteData.originalThreadId || threadId.split('_').pop();
+    const safeOriginalId = this.escapeHtml(originalThreadId || '');
+    const isActive = this.currentThreadId && threadId === this.currentThreadId;
+    const activeClass = isActive ? ' active' : '';
+    const archivedClass = isArchived ? ' archived' : '';
 
-    const notesContent = document.querySelector('#allNotesView .notes-content');
-    const noteMap = new Map(noteEntries);
+    const pinIconHtml = noteData.pinned
+      ? `<svg class="note-pin-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+          <line x1="12" y1="17" x2="12" y2="22"></line>
+          <path d="M5 17h14v-1.76a2 2 0 0 0-1.11-1.79l-1.78-.9A2 2 0 0 1 15 10.76V6h1a2 2 0 0 0 0-4H8a2 2 0 0 0 0 4h1v4.76a2 2 0 0 1-1.11 1.79l-1.78.9A2 2 0 0 0 5 15.24Z"></path>
+         </svg>`
+      : '';
 
-    // Render the full list: chrome.storage.sync caps us at ~100KB / 512 items,
-    // so the list can never grow large enough to need pagination.
-    const notesHtml = noteEntries.map(([threadId, noteData]) => {
-      // Extract text content from markdown for preview
-      const cleanContent = this.extractTextFromMarkdown(noteData.content);
-      const preview = cleanContent.length > 100
-        ? cleanContent.substring(0, 100) + '...'
-        : cleanContent;
-      const previewClass = this.isRtlText(cleanContent) ? 'note-preview rtl' : 'note-preview';
-      const timestamp = this.formatTimestamp(new Date(noteData.lastModified || noteData.timestamp));
-      const subject = noteData.subject || 'No Subject';
-      const platform = noteData.platform || 'gmail';
-      const originalThreadId = noteData.originalThreadId || threadId.split('_').pop();
-      const safeOriginalId = this.escapeHtml(originalThreadId || '');
-      const isActive = this.currentThreadId && threadId === this.currentThreadId;
-      const activeClass = isActive ? ' active' : '';
+    const archivedChipHtml = isArchived
+      ? `<div class="note-platform note-archived-chip">archived</div>`
+      : '';
 
-      return `
-        <div class="note-item${activeClass}"
-          data-thread-id="${threadId}"
-          data-platform="${platform}"
-          data-original-thread-id="${safeOriginalId}"
-          data-account="${this.escapeHtml(noteData.account || '')}"
-          data-account-email="${this.escapeHtml(noteData.accountEmail || '')}"
-          data-subject="${this.escapeHtml(subject)}">
-          <div class="note-header">
-            <div class="note-subject">${this.escapeHtml(subject)}</div>
-            <div class="note-meta">
-              <div class="note-platform">${platform}</div>
-              <button class="note-open-btn" title="Open email thread" aria-label="Open email thread">
-                <svg class="note-open-icon" viewBox="0 0 24 24">
-                  <path d="M7 17L17 7" stroke-width="1.6" fill="none" stroke-linecap="round"></path>
-                  <polyline points="11,7 17,7 17,13" stroke-width="1.6" fill="none" stroke-linecap="round" stroke-linejoin="round"></polyline>
-                </svg>
-              </button>
-            </div>
+    return `
+      <div class="note-item${activeClass}${archivedClass}"
+        data-thread-id="${threadId}"
+        data-platform="${platform}"
+        data-original-thread-id="${safeOriginalId}"
+        data-account="${this.escapeHtml(noteData.account || '')}"
+        data-account-email="${this.escapeHtml(noteData.accountEmail || '')}"
+        data-subject="${this.escapeHtml(subject)}">
+        <div class="note-header">
+          <div class="note-subject">${pinIconHtml}${this.escapeHtml(subject)}</div>
+          <div class="note-meta">
+            ${archivedChipHtml}
+            <div class="note-platform">${platform}</div>
+            <button class="note-open-btn" title="Open email thread" aria-label="Open email thread">
+              <svg class="note-open-icon" viewBox="0 0 24 24">
+                <path d="M7 17L17 7" stroke-width="1.6" fill="none" stroke-linecap="round"></path>
+                <polyline points="11,7 17,7 17,13" stroke-width="1.6" fill="none" stroke-linecap="round" stroke-linejoin="round"></polyline>
+              </svg>
+            </button>
           </div>
-          <div class="${previewClass}">${this.escapeHtml(preview)}</div>
-          <div class="note-timestamp">${timestamp}</div>
+        </div>
+        <div class="${previewClass}">${this.escapeHtml(preview)}</div>
+        <div class="note-timestamp">${timestamp}</div>
+      </div>
+    `;
+  }
+
+  async displayAllNotes({ active, archived, searchTerm }) {
+    const notesContent = document.querySelector('#allNotesView .notes-content');
+
+    // Read persisted collapse state; default to collapsed (false = collapsed).
+    // During a search we always expand regardless of the stored value.
+    const isSearching = !!(searchTerm && searchTerm.length > 0);
+    let archivedOpen = isSearching;
+    if (!isSearching && archived.length > 0) {
+      try {
+        const stored = await chrome.storage.local.get(['archivedSectionOpen']);
+        archivedOpen = !!stored.archivedSectionOpen;
+      } catch (e) {
+        // Ignore storage errors; default stays collapsed.
+        console.warn('Could not read archivedSectionOpen from storage:', e);
+      }
+    }
+
+    // Build the note map over ALL entries (active + archived) so handler
+    // wiring works for every rendered card regardless of collapsed state.
+    const noteMap = new Map([...active, ...archived]);
+
+    // --- Active list ---
+    const activeHtml = active.map(entry => this.buildNoteCardHtml(entry, false)).join('');
+
+    // --- Archived section (only when there are archived notes) ---
+    let archivedSectionHtml = '';
+    if (archived.length > 0) {
+      const chevronStyle = archivedOpen ? 'transform: rotate(90deg);' : '';
+      const archivedCardsHtml = archived.map(entry => this.buildNoteCardHtml(entry, true)).join('');
+      archivedSectionHtml = `
+        <div class="archived-section-header"
+          role="button"
+          tabindex="0"
+          aria-expanded="${archivedOpen}"
+          data-searching="${isSearching}">
+          <svg class="archived-chevron" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" style="${chevronStyle}" aria-hidden="true">
+            <polyline points="9 18 15 12 9 6"></polyline>
+          </svg>
+          <span>Archived (${archived.length})</span>
+        </div>
+        <div class="archived-notes-list" style="display: ${archivedOpen ? 'flex' : 'none'};">
+          ${archivedCardsHtml}
         </div>
       `;
-    }).join('');
-    
+    }
+
     const activeCount = active.length;
     const archivedCount = archived.length;
     const noteCountLabel = `${activeCount} ${activeCount === 1 ? 'note' : 'notes'}` +
@@ -974,14 +1025,49 @@ class EmailNotesSidebar {
         <div class="notes-count">${noteCountLabel}</div>
       </div>
       <div class="notes-list">
-        ${notesHtml}
+        ${activeHtml}
+        ${archivedSectionHtml}
       </div>
     `;
-    
+
     // Add CSS for notes list
     this.addNotesListStyles();
-    
-    // Add click handlers for note items
+
+    // Wire up archived section toggle
+    const sectionHeader = notesContent.querySelector('.archived-section-header');
+    if (sectionHeader) {
+      const archivedList = notesContent.querySelector('.archived-notes-list');
+
+      const toggle = () => {
+        const nowOpen = sectionHeader.getAttribute('aria-expanded') === 'true';
+        const nextOpen = !nowOpen;
+        sectionHeader.setAttribute('aria-expanded', String(nextOpen));
+        archivedList.style.display = nextOpen ? 'flex' : 'none';
+        const chevron = sectionHeader.querySelector('.archived-chevron');
+        if (chevron) {
+          chevron.style.transform = nextOpen ? 'rotate(90deg)' : '';
+        }
+        // Only persist when not in a search context
+        const searching = sectionHeader.getAttribute('data-searching') === 'true';
+        if (!searching) {
+          chrome.storage.local.set({ archivedSectionOpen: nextOpen }).catch(err => {
+            console.warn('Could not persist archivedSectionOpen:', err);
+          });
+        }
+      };
+
+      sectionHeader.addEventListener('click', toggle);
+      sectionHeader.addEventListener('keydown', (e) => {
+        if (e.key === 'Enter' || e.key === ' ') {
+          e.preventDefault();
+          toggle();
+        }
+      });
+    }
+
+    // Add click/contextmenu handlers for ALL note items (active + archived).
+    // Archived cards are in the DOM even when collapsed (display:none on the
+    // container), so querySelectorAll picks them up correctly.
     document.querySelectorAll('.note-item').forEach(item => {
       const threadId = item.getAttribute('data-thread-id');
       item._noteData = noteMap.get(threadId) || null;
@@ -1166,8 +1252,71 @@ class EmailNotesSidebar {
         font-size: 11px;
         opacity: 0.8;
       }
+
+      /* --- Pinned indicator --- */
+      .note-pin-icon {
+        display: inline-block;
+        vertical-align: middle;
+        width: 12px;
+        height: 12px;
+        margin-right: 4px;
+        flex-shrink: 0;
+        color: var(--accent-color);
+        position: relative;
+        top: -1px;
+      }
+
+      /* --- Archived note card --- */
+      .note-item.archived {
+        opacity: 0.65;
+      }
+
+      .note-archived-chip {
+        color: var(--text-muted);
+        background: var(--bg-app);
+        border: 1px solid var(--border-color);
+      }
+
+      /* --- Archived section header --- */
+      .archived-section-header {
+        display: flex;
+        align-items: center;
+        gap: 5px;
+        font-size: 11px;
+        font-weight: 500;
+        color: var(--text-muted);
+        cursor: pointer;
+        padding: 6px 4px 4px;
+        border-radius: 6px;
+        user-select: none;
+        transition: background-color 0.15s;
+        outline: none;
+      }
+
+      .archived-section-header:hover {
+        background-color: var(--bg-hover);
+      }
+
+      .archived-section-header:focus-visible {
+        box-shadow: 0 0 0 2px var(--accent-dim);
+      }
+
+      .archived-chevron {
+        width: 13px;
+        height: 13px;
+        flex-shrink: 0;
+        transition: transform 0.2s ease;
+      }
+
+      /* --- Archived notes container --- */
+      .archived-notes-list {
+        display: flex;
+        flex-direction: column;
+        gap: 10px;
+        padding-top: 4px;
+      }
     `;
-    
+
     document.head.appendChild(style);
   }
 
