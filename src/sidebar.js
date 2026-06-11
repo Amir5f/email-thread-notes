@@ -11,6 +11,7 @@ class EmailNotesSidebar {
     this.saveTimeout = null;
     this.milkdownEditor = null; // Milkdown editor instance
     this.rtlObserver = null; // MutationObserver for RTL detection
+    this.currentNoteArchived = false;
 
     // Promise to track when Milkdown editor is fully initialized
     this.editorReadyPromise = null;
@@ -76,6 +77,14 @@ class EmailNotesSidebar {
     saveBtn.addEventListener('click', () => {
       this.saveCurrentNoteImmediately();
     });
+
+    // Archive button handler
+    const archiveBtn = document.getElementById('archiveNoteBtn');
+    if (archiveBtn) {
+      archiveBtn.addEventListener('click', () => {
+        this.toggleArchiveCurrentNote();
+      });
+    }
 
     // Delete button handler
     const deleteBtn = document.getElementById('deleteNoteBtn');
@@ -655,6 +664,10 @@ class EmailNotesSidebar {
           this.currentOriginalThreadId = response.note.originalThreadId;
         }
 
+        // Set archive state
+        this.currentNoteArchived = !!response.note.archived;
+        this.updateArchiveButtonState(true, this.currentNoteArchived);
+
         if (this.milkdownEditor) {
           // Set markdown content in Milkdown (editor is guaranteed to be ready now)
           console.log('Calling setMarkdown with content...');
@@ -690,6 +703,11 @@ class EmailNotesSidebar {
         }, 1000);
       } else {
         console.log('📭 No note found for this thread - clearing editor');
+
+        // Reset archive state
+        this.currentNoteArchived = false;
+        this.updateArchiveButtonState(false, false);
+
         if (this.milkdownEditor) {
           console.log('Calling setMarkdown with empty string...');
           await this.milkdownEditor.setMarkdown('');
@@ -1753,6 +1771,10 @@ class EmailNotesSidebar {
     const threadBtn = document.getElementById('threadNotesBtn');
     threadBtn.disabled = false;
 
+    // Set archive state
+    this.currentNoteArchived = !!noteData.archived;
+    this.updateArchiveButtonState(true, this.currentNoteArchived);
+
     const content = noteData.content || '';
     if (this.milkdownEditor) {
       try {
@@ -1849,6 +1871,10 @@ class EmailNotesSidebar {
         if (response.success) {
           this.updateSaveStatus('saved', 'Note cleared');
 
+          // Note no longer exists - reset archive state
+          this.currentNoteArchived = false;
+          this.updateArchiveButtonState(false, false);
+
           // Clear last updated timestamp
           const lastUpdated = document.getElementById('lastUpdated');
           lastUpdated.textContent = '';
@@ -1890,6 +1916,9 @@ class EmailNotesSidebar {
         // Update last modified timestamp
         const lastUpdated = document.getElementById('lastUpdated');
         lastUpdated.textContent = this.formatTimestamp(new Date());
+
+        // Enable archive button if it was previously disabled (new note)
+        this.updateArchiveButtonState(true, this.currentNoteArchived);
 
         // Refresh All Notes list if it's loaded
         if (this.allNotes) {
@@ -1983,6 +2012,10 @@ class EmailNotesSidebar {
         const lastUpdated = document.getElementById('lastUpdated');
         lastUpdated.textContent = '';
 
+        // Note no longer exists - reset archive state
+        this.currentNoteArchived = false;
+        this.updateArchiveButtonState(false, false);
+
         this.updateSaveStatus('saved', 'Note deleted');
 
         // Return to ready state after 2 seconds
@@ -2013,13 +2046,62 @@ class EmailNotesSidebar {
   updateSaveStatus(status, text) {
     const indicator = document.getElementById('statusIndicator');
     const statusText = document.getElementById('statusText');
-    
+
     // Remove all status classes
     indicator.className = 'status-indicator';
-    
+
     // Add specific status class
     indicator.classList.add(status);
     statusText.textContent = text;
+  }
+
+  updateArchiveButtonState(noteExists, archived) {
+    const archiveBtn = document.getElementById('archiveNoteBtn');
+    const archivedChip = document.getElementById('threadArchivedChip');
+
+    if (!archiveBtn) return;
+
+    archiveBtn.disabled = !noteExists;
+
+    if (archived) {
+      archiveBtn.classList.add('active');
+      archiveBtn.title = 'Unarchive note';
+      if (archivedChip) {
+        archivedChip.style.display = 'inline-block';
+      }
+    } else {
+      archiveBtn.classList.remove('active');
+      archiveBtn.title = 'Archive note';
+      if (archivedChip) {
+        archivedChip.style.display = 'none';
+      }
+    }
+  }
+
+  async toggleArchiveCurrentNote() {
+    if (!this.currentThreadId) return;
+
+    try {
+      const response = await chrome.runtime.sendMessage({
+        action: 'updateNoteFields',
+        threadId: this.currentThreadId,
+        fields: { archived: !this.currentNoteArchived }
+      });
+
+      if (response && response.success) {
+        this.currentNoteArchived = !!response.noteData?.archived;
+        this.updateArchiveButtonState(true, this.currentNoteArchived);
+
+        // Refresh All Notes data if loaded
+        if (this.allNotes) {
+          this.loadAllNotesView();
+        }
+      } else {
+        console.error('Failed to update archive state:', response?.error);
+      }
+    } catch (error) {
+      console.error('Error toggling archive:', error);
+    }
   }
 
   formatTimestamp(date) {
