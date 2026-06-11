@@ -961,6 +961,13 @@ class EmailNotesSidebar {
                 <polyline points="11,7 17,7 17,13" stroke-width="1.6" fill="none" stroke-linecap="round" stroke-linejoin="round"></polyline>
               </svg>
             </button>
+            <button class="note-kebab-btn" title="Note actions" aria-label="Note actions" aria-haspopup="menu">
+              <svg viewBox="0 0 24 24" width="16" height="16" fill="currentColor" aria-hidden="true">
+                <circle cx="12" cy="5" r="1.5"></circle>
+                <circle cx="12" cy="12" r="1.5"></circle>
+                <circle cx="12" cy="19" r="1.5"></circle>
+              </svg>
+            </button>
           </div>
         </div>
         <div class="${previewClass}">${this.escapeHtml(preview)}</div>
@@ -1091,6 +1098,14 @@ class EmailNotesSidebar {
           const platform = item.getAttribute('data-platform');
           const originalThreadId = item.getAttribute('data-original-thread-id');
           this.openThread(threadId, platform, originalThreadId);
+        });
+      }
+
+      const kebabBtn = item.querySelector('.note-kebab-btn');
+      if (kebabBtn) {
+        kebabBtn.addEventListener('click', (event) => {
+          event.stopPropagation();
+          this.showNoteContextMenu(event, item, kebabBtn);
         });
       }
 
@@ -1315,6 +1330,80 @@ class EmailNotesSidebar {
         gap: 10px;
         padding-top: 4px;
       }
+
+      /* --- Kebab button --- */
+      .note-kebab-btn {
+        border: none;
+        background: transparent;
+        padding: 4px;
+        border-radius: 50%;
+        cursor: pointer;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        color: var(--text-muted);
+        opacity: 0.35;
+        transition: background 0.2s ease, color 0.2s ease, opacity 0.2s ease;
+        flex-shrink: 0;
+      }
+
+      .note-kebab-btn:hover {
+        background: var(--bg-hover);
+        color: var(--accent-color);
+        opacity: 1;
+      }
+
+      .note-item:hover .note-kebab-btn,
+      .note-item:focus-within .note-kebab-btn {
+        opacity: 1;
+      }
+
+      /* --- Context menu surface --- */
+      .note-context-menu {
+        position: fixed;
+        background: var(--bg-panel);
+        border: 1px solid var(--border-color);
+        border-radius: 8px;
+        box-shadow: 0 4px 12px rgba(0, 0, 0, 0.4);
+        min-width: 140px;
+        font-size: 13px;
+        z-index: 10002;
+        padding: 4px 0;
+        font-family: inherit;
+      }
+
+      /* --- Context menu items --- */
+      .context-menu-item {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        padding: 7px 12px;
+        cursor: pointer;
+        color: var(--text-main);
+        transition: background-color 0.15s ease, color 0.15s ease;
+        white-space: nowrap;
+        user-select: none;
+      }
+
+      .context-menu-item:hover {
+        background-color: var(--bg-hover);
+        color: var(--accent-color);
+      }
+
+      .context-menu-item svg {
+        flex-shrink: 0;
+        width: 14px;
+        height: 14px;
+      }
+
+      .context-menu-item.destructive {
+        color: var(--text-muted);
+      }
+
+      .context-menu-item.destructive:hover {
+        background-color: rgba(220, 38, 38, 0.15);
+        color: #f87171;
+      }
     `;
 
     document.head.appendChild(style);
@@ -1433,77 +1522,161 @@ class EmailNotesSidebar {
     );
   }
 
-  showNoteContextMenu(event, noteItem) {
-    // Remove any existing context menu
+  showNoteContextMenu(event, noteItem, anchorEl = null) {
+    // Remove any existing context menu first
     const existingMenu = document.querySelector('.note-context-menu');
     if (existingMenu) {
       existingMenu.remove();
     }
 
-    // Create context menu
+    const noteData = noteItem._noteData || {};
+    const isPinned = !!noteData.pinned;
+    const isArchived = !!noteData.archived;
+
+    // SVG icons
+    const pinSvg = `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+      <line x1="12" y1="17" x2="12" y2="22"></line>
+      <path d="M5 17h14v-1.76a2 2 0 0 0-1.11-1.79l-1.78-.9A2 2 0 0 1 15 10.76V6h1a2 2 0 0 0 0-4H8a2 2 0 0 0 0 4h1v4.76a2 2 0 0 1-1.11 1.79l-1.78.9A2 2 0 0 0 5 15.24Z"></path>
+    </svg>`;
+    const archiveSvg = `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+      <polyline points="21 8 21 21 3 21 3 8"></polyline>
+      <rect x="1" y="3" width="22" height="5"></rect>
+      <line x1="10" y1="12" x2="14" y2="12"></line>
+    </svg>`;
+    const trashSvg = `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+      <polyline points="3 6 5 6 21 6"></polyline>
+      <path d="M19 6l-1 14H6L5 6"></path>
+      <path d="M10 11v6"></path>
+      <path d="M14 11v6"></path>
+      <path d="M9 6V4h6v2"></path>
+    </svg>`;
+
+    // Build menu items from a data array to avoid copy-pasted HTML blocks
+    const items = [
+      { action: 'pin',     label: isPinned  ? 'Unpin'     : 'Pin',       icon: pinSvg,     destructive: false },
+      { action: 'archive', label: isArchived ? 'Unarchive' : 'Archive',   icon: archiveSvg, destructive: false },
+      { action: 'delete',  label: 'Delete',                                icon: trashSvg,   destructive: true  },
+    ];
+
     const contextMenu = document.createElement('div');
     contextMenu.className = 'note-context-menu';
-    contextMenu.innerHTML = `
-      <div class="context-menu-item delete-item">
-        <span class="menu-icon">🗑️</span>
-        <span class="menu-text">Delete Note</span>
-      </div>
-    `;
-    
-    contextMenu.style.cssText = `
-      position: fixed;
-      top: ${event.clientY}px;
-      left: ${event.clientX}px;
-      background: white;
-      border: 1px solid #dadce0;
-      border-radius: 6px;
-      box-shadow: 0 4px 12px rgba(0,0,0,0.15);
-      z-index: 10002;
-      font-family: inherit;
-      font-size: 13px;
-      min-width: 120px;
-    `;
+    contextMenu.setAttribute('role', 'menu');
 
-    const deleteItem = contextMenu.querySelector('.delete-item');
-    deleteItem.style.cssText = `
-      padding: 8px 12px;
-      cursor: pointer;
-      display: flex;
-      align-items: center;
-      gap: 8px;
-      transition: background-color 0.2s;
-    `;
-
-    deleteItem.addEventListener('mouseenter', () => {
-      deleteItem.style.backgroundColor = '#fee2e2';
-      deleteItem.style.color = '#dc2626';
+    items.forEach(({ action, label, icon, destructive }) => {
+      const item = document.createElement('div');
+      item.className = 'context-menu-item' + (destructive ? ' destructive' : '');
+      item.setAttribute('role', 'menuitem');
+      item.setAttribute('tabindex', '-1');
+      item.innerHTML = icon + `<span>${label}</span>`;
+      item.addEventListener('click', () => this._handleContextMenuAction(action, contextMenu, noteItem));
+      contextMenu.appendChild(item);
     });
 
-    deleteItem.addEventListener('mouseleave', () => {
-      deleteItem.style.backgroundColor = 'white';
-      deleteItem.style.color = 'inherit';
-    });
-
-    deleteItem.addEventListener('click', async () => {
-      contextMenu.remove();
-      await this.deleteNoteFromList(noteItem);
-    });
-
-    // Add to page
+    // Initial off-screen placement so we can measure
+    contextMenu.style.top = '-9999px';
+    contextMenu.style.left = '-9999px';
     document.body.appendChild(contextMenu);
 
-    // Close menu when clicking outside
-    const closeMenu = (e) => {
-      if (!contextMenu.contains(e.target)) {
-        contextMenu.remove();
-        document.removeEventListener('click', closeMenu);
+    // Determine raw position
+    let rawTop, rawLeft;
+    if (anchorEl) {
+      const rect = anchorEl.getBoundingClientRect();
+      rawTop = rect.bottom + 4;
+      rawLeft = rect.right - contextMenu.offsetWidth;
+    } else {
+      rawTop = event.clientY;
+      rawLeft = event.clientX;
+    }
+
+    // Clamp to viewport
+    const menuW = contextMenu.offsetWidth;
+    const menuH = contextMenu.offsetHeight;
+    const vw = window.innerWidth;
+    const vh = window.innerHeight;
+
+    const top  = Math.min(rawTop,  vh - menuH - 4);
+    const left = Math.max(4, Math.min(rawLeft, vw - menuW - 4));
+
+    contextMenu.style.top  = `${top}px`;
+    contextMenu.style.left = `${left}px`;
+
+    // --- Cleanup helpers ---
+    const removeMenu = () => {
+      contextMenu.remove();
+      document.removeEventListener('click', outsideClick);
+      document.removeEventListener('keydown', escapeKey);
+      const notesList = document.querySelector('.notes-list');
+      if (notesList) {
+        notesList.removeEventListener('scroll', removeMenu);
       }
     };
-    
-    // Add listener on next tick to avoid immediate closure
+
+    const outsideClick = (e) => {
+      if (!contextMenu.contains(e.target)) {
+        removeMenu();
+      }
+    };
+
+    const escapeKey = (e) => {
+      if (e.key === 'Escape') {
+        removeMenu();
+      }
+    };
+
+    // Let menu-item clicks run the full cleanup instead of a bare .remove()
+    contextMenu._cleanup = removeMenu;
+
+    // Attach on next tick so the triggering click doesn't immediately close the menu
     setTimeout(() => {
-      document.addEventListener('click', closeMenu);
+      document.addEventListener('click', outsideClick);
+      document.addEventListener('keydown', escapeKey);
+      const notesList = document.querySelector('.notes-list');
+      if (notesList) {
+        notesList.addEventListener('scroll', removeMenu, { once: true });
+      }
     }, 0);
+  }
+
+  async _handleContextMenuAction(action, menuEl, noteItem) {
+    if (menuEl._cleanup) {
+      menuEl._cleanup();
+    } else {
+      menuEl.remove();
+    }
+
+    if (action === 'delete') {
+      await this.deleteNoteFromList(noteItem);
+      return;
+    }
+
+    // Pin / Archive toggle
+    const threadId = noteItem.getAttribute('data-thread-id');
+    const noteData = noteItem._noteData || {};
+    let fields;
+
+    if (action === 'pin') {
+      fields = { pinned: !noteData.pinned };
+    } else if (action === 'archive') {
+      fields = { archived: !noteData.archived };
+    } else {
+      return;
+    }
+
+    try {
+      const response = await chrome.runtime.sendMessage({
+        action: 'updateNoteFields',
+        threadId,
+        fields,
+      });
+
+      if (response && response.success) {
+        this.loadAllNotesView();
+      } else {
+        console.error('Failed to update note fields:', response?.error);
+      }
+    } catch (err) {
+      console.error('Error updating note fields:', err);
+    }
   }
 
   async deleteNoteFromList(noteItem) {
