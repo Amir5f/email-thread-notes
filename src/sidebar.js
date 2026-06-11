@@ -934,11 +934,36 @@ class EmailNotesSidebar {
 
   // Builds and returns the HTML string for a single note card.
   // isArchived = true adds the 'archived' class and the Archived chip.
-  buildNoteCardHtml([threadId, noteData], isArchived = false) {
+  // searchTerm (already lowercased) drives preview windowing and highlighting.
+  buildNoteCardHtml([threadId, noteData], isArchived = false, searchTerm = '') {
     const cleanContent = this.extractTextFromMarkdown(noteData.content);
-    const preview = cleanContent.length > 100
-      ? cleanContent.substring(0, 100) + '...'
-      : cleanContent;
+
+    // --- Preview windowing ---
+    // When searching and the first match starts beyond char 80, re-window the
+    // preview so the match is visible; otherwise keep the original behaviour.
+    let preview;
+    if (searchTerm && cleanContent.length > 100) {
+      const matchIdx = cleanContent.toLowerCase().indexOf(searchTerm);
+      if (matchIdx > 80) {
+        // Start ~40 chars before the match, snapping back to a word boundary.
+        let start = matchIdx - 40;
+        const spaceIdx = cleanContent.lastIndexOf(' ', matchIdx - 1);
+        if (spaceIdx > matchIdx - 40) {
+          start = spaceIdx + 1;
+        }
+        start = Math.max(0, start);
+        const window = cleanContent.substring(start, start + 100);
+        const needsTail = start + 100 < cleanContent.length;
+        preview = (start > 0 ? '…' : '') + window + (needsTail ? '...' : '');
+      } else {
+        preview = cleanContent.substring(0, 100) + '...';
+      }
+    } else {
+      preview = cleanContent.length > 100
+        ? cleanContent.substring(0, 100) + '...'
+        : cleanContent;
+    }
+
     const previewClass = this.isRtlText(cleanContent) ? 'note-preview rtl' : 'note-preview';
     const timestamp = this.formatTimestamp(new Date(noteData.lastModified || noteData.timestamp));
     const subject = noteData.subject || 'No Subject';
@@ -969,7 +994,7 @@ class EmailNotesSidebar {
         data-account-email="${this.escapeHtml(noteData.accountEmail || '')}"
         data-subject="${this.escapeHtml(subject)}">
         <div class="note-header">
-          <div class="note-subject">${pinIconHtml}${this.escapeHtml(subject)}</div>
+          <div class="note-subject">${pinIconHtml}${this.highlightMatches(subject, searchTerm)}</div>
           <div class="note-meta">
             ${archivedChipHtml}
             <div class="note-platform">${platform}</div>
@@ -988,7 +1013,7 @@ class EmailNotesSidebar {
             </button>
           </div>
         </div>
-        <div class="${previewClass}">${this.escapeHtml(preview)}</div>
+        <div class="${previewClass}">${this.highlightMatches(preview, searchTerm)}</div>
         <div class="note-timestamp">${timestamp}</div>
       </div>
     `;
@@ -1016,13 +1041,13 @@ class EmailNotesSidebar {
     const noteMap = new Map([...active, ...archived]);
 
     // --- Active list ---
-    const activeHtml = active.map(entry => this.buildNoteCardHtml(entry, false)).join('');
+    const activeHtml = active.map(entry => this.buildNoteCardHtml(entry, false, searchTerm)).join('');
 
     // --- Archived section (only when there are archived notes) ---
     let archivedSectionHtml = '';
     if (archived.length > 0) {
       const chevronStyle = archivedOpen ? 'transform: rotate(90deg);' : '';
-      const archivedCardsHtml = archived.map(entry => this.buildNoteCardHtml(entry, true)).join('');
+      const archivedCardsHtml = archived.map(entry => this.buildNoteCardHtml(entry, true, searchTerm)).join('');
       archivedSectionHtml = `
         <div class="archived-section-header"
           role="button"
@@ -1421,6 +1446,14 @@ class EmailNotesSidebar {
       .context-menu-item.destructive:hover {
         background-color: rgba(220, 38, 38, 0.15);
         color: #f87171;
+      }
+
+      /* --- Search match highlight --- */
+      .search-mark {
+        background: var(--accent-dim);
+        color: var(--text-main);
+        border-radius: 2px;
+        padding: 0 1px;
       }
     `;
 
@@ -2207,6 +2240,37 @@ class EmailNotesSidebar {
     const div = document.createElement('div');
     div.textContent = text;
     return div.innerHTML;
+  }
+
+  // Returns an HTML string with search match segments wrapped in <mark>.
+  // XSS-safe: computes match offsets on raw text first, then escapes each
+  // segment individually, so escaping never shifts the offsets.
+  highlightMatches(text, searchTerm) {
+    if (!searchTerm) return this.escapeHtml(text);
+
+    const lowerText = text.toLowerCase();
+    const termLen = searchTerm.length;
+    const parts = [];
+    let cursor = 0;
+
+    let idx = lowerText.indexOf(searchTerm, cursor);
+    while (idx !== -1) {
+      // Non-matching segment before this match
+      if (idx > cursor) {
+        parts.push(this.escapeHtml(text.slice(cursor, idx)));
+      }
+      // Matching segment
+      parts.push(`<mark class="search-mark">${this.escapeHtml(text.slice(idx, idx + termLen))}</mark>`);
+      cursor = idx + termLen;
+      idx = lowerText.indexOf(searchTerm, cursor);
+    }
+
+    // Remaining tail after last match
+    if (cursor < text.length) {
+      parts.push(this.escapeHtml(text.slice(cursor)));
+    }
+
+    return parts.join('');
   }
 
   decodeHtml(text) {
