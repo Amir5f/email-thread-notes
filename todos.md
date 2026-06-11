@@ -38,6 +38,19 @@
 
 ---
 
+## 🔨 In Progress — v2.8.0 (branch `feature/v2.8-pins-archive`)
+
+Full task breakdown, model assignments, and phase test checklists: see `IMPLEMENTATION_PLAN.md`.
+
+- [x] Foundation bug fixes: saveNote field clobbering, export getDeviceId error, broken All Notes pagination *(code done — pending user testing)*
+- [ ] Pin notes to top of All Notes list (kebab/right-click menu)
+- [ ] Archive notes: collapsible Archived section, thread-view archive button
+- [ ] Undo toast replacing confirm()/alert() dialogs
+- [ ] Storage usage meter in Settings
+- [ ] Search term highlighting
+- [ ] "Recent activity" sort (last-email-seen approximation)
+- [ ] Repo migration out of iCloud + stable extension ID (Phase 4 runbook)
+
 ## 🚀 Immediate Next Steps
 
 ### Agreed Priority: Missing Features & Code Cleanup
