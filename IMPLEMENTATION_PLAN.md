@@ -71,7 +71,7 @@ so `pinned`/`archived`/`importedAt`/original `timestamp` survive the 1-second au
 
 ## Phase 1 — Pin & Archive
 
-### T1.1 — Sort/group pipeline in All Notes ⬜ `Sonnet`
+### T1.1 — Sort/group pipeline in All Notes ✅ done — Sonnet (validated)
 - **Files:** `src/sidebar.js` (`filterAndDisplayNotes`, `displayAllNotes` signature)
 - **Spec:**
   - In `filterAndDisplayNotes()`, after filtering, split into `activeNotes` (`!noteData.archived`) and `archivedNotes`.
@@ -80,7 +80,7 @@ so `pinned`/`archived`/`importedAt`/original `timestamp` survive the 1-second au
   - Call `displayAllNotes({ active, archived, searchTerm })` (adjust signature and call sites).
 - **Acceptance:** no behavior change for users with no pinned/archived notes; pinned-first holds under all three sort options; empty-state logic still works when both groups are empty.
 
-### T1.2 — Render pinned state + collapsible Archived section ⬜ `Sonnet`
+### T1.2 — Render pinned state + collapsible Archived section ✅ done — Sonnet (validated)
 - **Depends on:** T1.1
 - **Files:** `src/sidebar.js` (`displayAllNotes`, `addNotesListStyles`)
 - **Spec:**
@@ -91,7 +91,7 @@ so `pinned`/`archived`/`importedAt`/original `timestamp` survive the 1-second au
   - All styles in `addNotesListStyles()` using CSS variables.
 - **Acceptance:** toggle state survives panel reopen; no layout shift at side-panel width (~320–400px); zero-archived users see no new chrome.
 
-### T1.3 — Kebab menu + unified right-click menu ⬜ `Sonnet`
+### T1.3 — Kebab menu + unified right-click menu ✅ done — Sonnet (validated; Fable fixed a listener-cleanup leak)
 - **Depends on:** T1.2
 - **Files:** `src/sidebar.js` (`displayAllNotes`, replace `showNoteContextMenu`)
 - **Spec:**
@@ -101,7 +101,7 @@ so `pinned`/`archived`/`importedAt`/original `timestamp` survive the 1-second au
   - One menu instance at a time; closes on outside click, Escape, and scroll. Keep menu construction in one helper to avoid duplicating HTML strings.
 - **Acceptance:** menu fully usable by mouse and right-click; no stray menus left in DOM; archived/pinned state reflected immediately in the list.
 
-### T1.4 — Archive toggle in Thread view footer ⬜ `Haiku`
+### T1.4 — Archive toggle in Thread view footer ✅ done — Haiku (validated; Fable added archive-state reset on both delete paths)
 - **Depends on:** T0.4
 - **Files:** `src/sidebar.html` (notes-footer), `src/sidebar.js`
 - **Spec:**
@@ -230,10 +230,10 @@ if iCloud regenerates any before the move, delete them again the same way.
 | T0.2 | saveNote merge | Fable | ✅ done |
 | T0.3 | Remove pagination | Fable | ✅ done |
 | T0.4 | updateNoteFields action | Haiku | ✅ done |
-| T1.1 | Sort/group pipeline | Sonnet | ⬜ |
-| T1.2 | Pinned + Archived rendering | Sonnet | ⬜ |
-| T1.3 | Kebab + context menu | Sonnet | ⬜ |
-| T1.4 | Thread-view archive button | Haiku | ⬜ |
+| T1.1 | Sort/group pipeline | Sonnet | ✅ done |
+| T1.2 | Pinned + Archived rendering | Sonnet | ✅ done |
+| T1.3 | Kebab + context menu | Sonnet | ✅ done |
+| T1.4 | Thread-view archive button | Haiku | ✅ done |
 | T2.1 | Undo toast | Sonnet | ⬜ |
 | T2.2 | Storage meter | Haiku | ⬜ |
 | T2.3 | Search highlighting | Sonnet | ⬜ |
