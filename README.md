@@ -1,6 +1,6 @@
 # Email Thread Notes
 
-> Private, persistent notes for Gmail and Outlook — right inside your browser sidebar.
+> Private, persistent notes for Gmail
 
 ![Version](https://img.shields.io/badge/version-2.8.0-blue)
 ![License](https://img.shields.io/badge/license-MIT-green)
@@ -31,21 +31,11 @@ All data stays in your browser. No accounts, no servers, no subscriptions.
 - **Archive notes** — move notes you're done with to a collapsible Archived section; they're still searchable
 - **Sort options** — Recent First · Oldest First · Alphabetical · **Recent Activity** (orders by the last email you saw in each thread)
 
-### Search
-- **Full-text search** across subjects and note previews
-- **Highlighted matches** — search terms highlighted inline; preview window shifts so matches are always visible even in long notes
-- **Auto-expand archive** — archived notes appear in search results with the section auto-expanded
-
 ### UX
 - **Undo toast** — delete or archive a note and get 5 seconds to undo, with no browser confirm dialogs
 - **Storage meter** — Settings panel shows how much of the 100 KB Chrome sync quota you're using
-- **Kebab menu + right-click** — pin, archive, or delete from either the ⋮ button or a right-click on any card
 - **Thread view controls** — Pin and Archive buttons live right in the note footer alongside Save and Delete
-
-### Platforms
-- **Gmail** — conversation view (both desktop layouts)
-- **Outlook** — outlook.office365.com · outlook.office.com · outlook.live.com
-
+- 
 ---
 
 ## Install
@@ -109,14 +99,7 @@ assets/
   icons/               Extension icons
 ```
 
----
 
-## Roadmap
-
-- [ ] Chrome Web Store listing
-- [ ] Gmail reading pane support
-- [ ] Advanced filtering (by platform, date range, account)
-- [ ] Keyboard shortcuts for save / toggle panel
 
 ---
 
