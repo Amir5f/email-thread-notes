@@ -1,0 +1,1233 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Email Thread Notes — Demo</title>
+<style>
+/* ─── BASE ───────────────────────────────────────────── */
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+body {
+  font-family: 'Google Sans', 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+  background: #0d0d0f;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 100vh;
+  overflow: hidden;
+}
+
+/* ─── DEMO FRAME ─────────────────────────────────────── */
+#demo {
+  width: 1000px;
+  height: 630px;
+  display: flex;
+  border-radius: 12px;
+  overflow: hidden;
+  box-shadow: 0 48px 100px rgba(0,0,0,0.75), 0 0 0 1px rgba(255,255,255,0.07);
+  position: relative;
+}
+
+/* ═══════════════════════════════════════════════════════
+   GMAIL — LIGHT MODE
+   ══════════════════════════════════════════════════════ */
+#gmail {
+  flex: 1;
+  background: #f6f8fc;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+/* ── Gmail header ── */
+.gm-header {
+  height: 64px;
+  background: #fff;
+  display: flex;
+  align-items: center;
+  padding: 0 16px 0 8px;
+  gap: 8px;
+  flex-shrink: 0;
+  box-shadow: 0 1px 2px rgba(0,0,0,0.1);
+  z-index: 1;
+}
+.gm-menu-btn {
+  width: 40px; height: 40px;
+  display: flex; align-items: center; justify-content: center;
+  border-radius: 50%; cursor: pointer;
+  color: #444746;
+}
+.gm-menu-btn:hover { background: #e9eaed; }
+.gm-menu-btn svg { width: 20px; height: 20px; fill: currentColor; }
+
+.gm-logo {
+  display: flex;
+  align-items: center;
+  margin-right: 8px;
+  text-decoration: none;
+  flex-shrink: 0;
+}
+.gm-logo svg { height: 28px; width: auto; }
+
+.gm-search {
+  flex: 1;
+  max-width: 680px;
+  height: 46px;
+  background: #eaf1fb;
+  border-radius: 24px;
+  display: flex;
+  align-items: center;
+  padding: 0 16px;
+  gap: 10px;
+  transition: background 0.2s, box-shadow 0.2s;
+}
+.gm-search:hover { background: #e2eaf8; box-shadow: 0 1px 3px rgba(0,0,0,0.1); }
+.gm-search svg { width: 20px; height: 20px; fill: #444746; flex-shrink: 0; }
+.gm-search span { font-size: 16px; color: #444746; flex: 1; }
+.gm-search-opts { margin-left: auto; width: 22px; height: 22px; display: flex; align-items: center; justify-content: center; border-radius: 50%; cursor: pointer; }
+.gm-search-opts svg { width: 18px; height: 18px; fill: #444746; }
+
+.gm-header-right {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  margin-left: auto;
+  flex-shrink: 0;
+}
+.gm-icon-btn {
+  width: 40px; height: 40px;
+  display: flex; align-items: center; justify-content: center;
+  border-radius: 50%; cursor: pointer; color: #444746;
+}
+.gm-icon-btn:hover { background: #e9eaed; }
+.gm-icon-btn svg { width: 22px; height: 22px; fill: currentColor; }
+.gm-avatar {
+  width: 32px; height: 32px;
+  border-radius: 50%;
+  background: #1a73e8;
+  color: #fff;
+  font-size: 14px; font-weight: 600;
+  display: flex; align-items: center; justify-content: center;
+  margin-left: 4px; cursor: pointer;
+  font-family: 'Google Sans', sans-serif;
+}
+
+/* ── Gmail body layout ── */
+.gm-body { flex: 1; display: flex; overflow: hidden; }
+
+/* ── Gmail left nav ── */
+.gm-nav {
+  width: 196px;
+  padding: 8px 0;
+  flex-shrink: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0;
+  overflow: hidden;
+}
+.gm-compose {
+  margin: 8px 16px 8px 8px;
+  height: 52px;
+  background: #c2e7ff;
+  border-radius: 16px;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 0 18px;
+  font-size: 14px;
+  font-weight: 600;
+  color: #001d35;
+  cursor: pointer;
+  user-select: none;
+  transition: background 0.2s, box-shadow 0.2s;
+}
+.gm-compose:hover { background: #aed6f6; box-shadow: 0 1px 3px rgba(0,0,0,0.15); }
+.gm-compose svg { width: 24px; height: 24px; flex-shrink: 0; }
+
+.gm-nav-row {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  height: 38px;
+  padding: 0 14px;
+  border-radius: 0 20px 20px 0;
+  margin-right: 12px;
+  font-size: 14px;
+  color: #202124;
+  cursor: pointer;
+  user-select: none;
+  position: relative;
+  transition: background 0.15s;
+}
+.gm-nav-row:hover { background: #e2e3e7; }
+.gm-nav-row.active {
+  background: #d3e3fd;
+  font-weight: 600;
+  color: #041e49;
+}
+.gm-nav-row svg { width: 20px; height: 20px; fill: currentColor; flex-shrink: 0; }
+.gm-nav-row .badge {
+  margin-left: auto;
+  font-size: 12px;
+  font-weight: 600;
+  color: #041e49;
+}
+
+
+/* ── Gmail thread content ── */
+.gm-thread-wrap {
+  flex: 1;
+  background: #fff;
+  overflow: hidden;
+  position: relative;
+}
+.gm-thread-view {
+  position: absolute;
+  inset: 0;
+  overflow-y: auto;
+  padding: 8px 16px 24px;
+  opacity: 1;
+  transition: opacity 0.3s ease;
+}
+.gm-thread-view.hidden { opacity: 0; pointer-events: none; }
+
+.gm-thread-controls {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  padding: 8px 0 12px;
+  border-bottom: 1px solid #e0e0e0;
+  margin-bottom: 12px;
+}
+.gm-ctrl-btn {
+  width: 36px; height: 36px;
+  display: flex; align-items: center; justify-content: center;
+  border-radius: 50%; cursor: pointer; color: #444746;
+}
+.gm-ctrl-btn:hover { background: #f2f2f2; }
+.gm-ctrl-btn svg { width: 18px; height: 18px; fill: currentColor; }
+.gm-back-btn {
+  display: flex; align-items: center; gap: 4px;
+  color: #444746; font-size: 13px;
+  padding: 6px 10px; border-radius: 20px; cursor: pointer;
+}
+.gm-back-btn:hover { background: #f2f2f2; }
+.gm-back-btn svg { width: 20px; height: 20px; fill: currentColor; }
+
+.gm-subject-row {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+  padding: 4px 0 14px;
+}
+.gm-subject-text { font-size: 22px; font-weight: 500; color: #202124; flex: 1; line-height: 1.3; }
+.gm-label-chip {
+  display: inline-flex;
+  align-items: center;
+  height: 22px;
+  padding: 0 8px;
+  border-radius: 4px;
+  font-size: 11px;
+  font-weight: 500;
+  border: 1px solid #dadce0;
+  color: #5f6368;
+  margin-top: 6px;
+  flex-shrink: 0;
+}
+.gm-label-chip.inbox { border-color: #1a73e8; color: #1a73e8; }
+
+.gm-msg-header {
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+  padding: 12px 0;
+  border-top: 1px solid #e0e0e0;
+}
+.gm-msg-avatar {
+  width: 40px; height: 40px;
+  border-radius: 50%;
+  display: flex; align-items: center; justify-content: center;
+  font-size: 16px; font-weight: 700;
+  color: #fff;
+  flex-shrink: 0;
+}
+.gm-msg-meta { flex: 1; }
+.gm-msg-sender { font-size: 14px; font-weight: 600; color: #202124; }
+.gm-msg-sender span { font-weight: 400; font-size: 12px; color: #5f6368; margin-left: 4px; }
+.gm-msg-to { font-size: 12px; color: #5f6368; margin-top: 1px; }
+.gm-msg-time { font-size: 12px; color: #5f6368; flex-shrink: 0; }
+
+.gm-msg-body { padding: 12px 0 12px 52px; font-size: 14px; line-height: 1.7; color: #3c4043; }
+.gm-msg-body p { margin-bottom: 10px; }
+.gm-msg-body p:last-child { margin-bottom: 0; }
+
+.gm-reply-row {
+  padding: 8px 0 0 52px;
+  display: flex;
+  gap: 8px;
+}
+.gm-reply-btn {
+  height: 32px;
+  padding: 0 16px;
+  border-radius: 16px;
+  border: 1px solid #dadce0;
+  background: #fff;
+  color: #444746;
+  font-size: 13px;
+  font-weight: 500;
+  cursor: pointer;
+  display: flex; align-items: center; gap: 6px;
+}
+.gm-reply-btn:hover { background: #f2f2f2; }
+.gm-reply-btn svg { width: 16px; height: 16px; fill: currentColor; }
+
+/* ═══════════════════════════════════════════════════════
+   EXTENSION SIDEBAR — DARK MODE
+   ══════════════════════════════════════════════════════ */
+:root {
+  --bg-app:      #18181b;
+  --bg-panel:    #27272a;
+  --bg-hover:    #3f3f46;
+  --bg-input:    #09090b;
+  --text-main:   #e4e4e7;
+  --text-muted:  #a1a1aa;
+  --border-color:#3f3f46;
+  --accent-color:#6366f1;
+  --accent-dim:  rgba(99,102,241,0.15);
+  --danger:      #ef4444;
+  --success:     #10b981;
+  --radius:      8px;
+  --t-fast: 0.15s cubic-bezier(0.2,0,0,1);
+  --t-base: 0.2s  cubic-bezier(0.2,0,0,1);
+  --t-slow: 0.3s  cubic-bezier(0.2,0,0,1);
+}
+
+#sidebar {
+  width: 380px;
+  background: var(--bg-app);
+  color: var(--text-main);
+  display: flex;
+  flex-direction: column;
+  overflow: visible;   /* allow ctxMenu to render above everything */
+  border-left: 1px solid rgba(0,0,0,0.25);
+  position: relative;
+  font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+  font-size: 14px;
+}
+.sb-content { overflow: hidden; }
+
+/* Header */
+.sb-header {
+  padding: 12px 16px 4px;
+  display: flex; gap: 12px; align-items: center;
+  flex-shrink: 0; background: var(--bg-app);
+}
+.sb-button-row {
+  flex: 1; display: flex;
+  background: var(--bg-panel);
+  padding: 4px; border-radius: var(--radius);
+}
+.sb-tab {
+  flex: 1; padding: 8px 12px;
+  border: none; background: transparent;
+  color: var(--text-muted); font-size: 13px; font-weight: 500;
+  cursor: pointer; border-radius: 6px; font-family: inherit;
+  transition: background var(--t-base), color var(--t-base);
+}
+.sb-tab.active {
+  color: var(--text-main); background: var(--bg-hover);
+  box-shadow: inset 0 1px 0 rgba(255,255,255,0.04), 0 1px 2px rgba(0,0,0,0.25);
+  font-weight: 600;
+}
+.sb-gear-btn {
+  width: 32px; height: 32px;
+  display: flex; align-items: center; justify-content: center;
+  border-radius: 6px; cursor: pointer;
+  color: var(--text-muted); background: transparent; border: none;
+  transition: background var(--t-base), color var(--t-base);
+}
+.sb-gear-btn:hover { background: var(--bg-hover); color: var(--text-main); }
+.sb-gear-btn.active { background: var(--bg-hover); color: var(--text-main); }
+.gear-inner { transition: transform var(--t-slow); display: flex; align-items: center; justify-content: center; }
+.sb-gear-btn.active .gear-inner { transform: rotate(65deg); }
+.sb-icon { width: 20px; height: 20px; stroke: currentColor; fill: none; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; }
+
+/* Settings panel */
+.sb-settings {
+  background: var(--bg-panel);
+  border-bottom: 1px solid var(--border-color);
+  box-shadow: inset 0 1px 0 rgba(255,255,255,0.03);
+  overflow: hidden; max-height: 0; flex-shrink: 0;
+  transition: max-height 0.25s cubic-bezier(0.2,0,0,1);
+}
+.sb-settings.open { max-height: 200px; }
+.sb-settings-inner { padding: 18px 20px; }
+.settings-label {
+  font-size: 10px; font-weight: 600; letter-spacing: 0.06em;
+  text-transform: uppercase; color: var(--text-muted); margin-bottom: 8px;
+}
+.settings-btn {
+  width: 100%; padding: 10px 16px;
+  border: 1px solid var(--border-color); border-radius: 8px;
+  background: var(--bg-app); color: var(--text-main);
+  font-size: 13px; font-weight: 500; cursor: pointer;
+  display: flex; align-items: center; justify-content: center; gap: 8px;
+  margin-bottom: 14px; font-family: inherit;
+  transition: background var(--t-base), border-color var(--t-base), color var(--t-base);
+}
+.settings-btn:hover { background: rgba(16,185,129,0.1); border-color: var(--success); color: var(--success); }
+.storage-meter {
+  height: 6px; background: var(--bg-app);
+  border: 1px solid var(--border-color); border-radius: 4px; overflow: hidden;
+  margin: 6px 0 5px;
+}
+.storage-fill {
+  height: 100%; width: 0%;
+  background: var(--accent-color); border-radius: 4px;
+  transition: width 1.4s ease;
+}
+.help-text { font-size: 12px; color: var(--text-muted); line-height: 1.4; }
+
+/* Views */
+.sb-content { flex: 1; display: flex; flex-direction: column; overflow: hidden; min-height: 0; }
+.sb-view { flex: 1; display: none; flex-direction: column; overflow: hidden; min-height: 0; }
+.sb-view.active { display: flex; animation: fadeUp 0.2s cubic-bezier(0.2,0,0,1) both; }
+@keyframes fadeUp { from { opacity:0; transform:translateY(5px); } to { opacity:1; transform:translateY(0); } }
+
+/* ── Thread view ── */
+.thread-info-bar { padding: 14px 20px 12px; border-bottom: 1px solid var(--border-color); flex-shrink: 0; }
+.tinfo-subject {
+  font-size: 13px; font-weight: 600; color: var(--text-main);
+  margin-bottom: 3px; display: flex; align-items: center; gap: 7px;
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+}
+.tinfo-subject svg { width: 14px; height: 14px; color: var(--accent-color); stroke: currentColor; fill: none; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; flex-shrink: 0; }
+.tinfo-meta { font-size: 12px; color: var(--text-muted); }
+
+.editor-area {
+  flex: 1; padding: 16px 20px;
+  overflow-y: auto; color: var(--text-main);
+  font-size: 15px; line-height: 1.65;
+  position: relative; min-height: 0;
+}
+.editor-area.empty::before {
+  content: "Click anywhere to start writing your note...";
+  color: var(--text-muted); position: absolute;
+  top: 50%; left: 50%; transform: translate(-50%,-50%);
+  font-size: 14px; pointer-events: none; text-align: center; width: 80%;
+}
+.editor-cursor {
+  display: inline-block; width: 2px; height: 1.05em;
+  background: var(--accent-color); margin-left: 1px;
+  vertical-align: text-bottom; animation: blink 1s step-end infinite;
+}
+@keyframes blink { 50% { opacity: 0; } }
+
+.notes-footer {
+  padding: 12px 16px; border-top: 1px solid var(--border-color);
+  background: var(--bg-app); display: flex;
+  justify-content: space-between; align-items: center; flex-shrink: 0;
+}
+.save-status { display: flex; align-items: center; gap: 8px; font-size: 13px; color: var(--text-muted); }
+.status-dot { width: 6px; height: 6px; border-radius: 50%; background: var(--text-muted); transition: background 0.35s; }
+.status-dot.typing { background: #f59e0b; animation: sPulse 1.4s infinite; }
+.status-dot.saved  { background: var(--success); animation: sPulse 2s ease-in-out infinite; }
+@keyframes sPulse { 0%,100%{ opacity:1; transform:scale(1); } 50%{ opacity:0.75; transform:scale(1.25); } }
+
+.notes-actions { display: flex; gap: 6px; }
+.icon-btn {
+  width: 36px; height: 36px; border: none; background: transparent;
+  cursor: pointer; border-radius: 8px;
+  display: flex; align-items: center; justify-content: center;
+  color: var(--text-muted);
+  transition: background var(--t-base), color var(--t-base), transform var(--t-fast);
+}
+.icon-btn:hover { background: var(--bg-hover); color: var(--text-main); transform: translateY(-1px); }
+.icon-btn.save-btn:hover { color: var(--success); background: rgba(16,185,129,0.1); }
+.icon-btn.del-btn:hover  { color: var(--danger);  background: rgba(239,68,68,0.1); }
+.icon-btn.active { color: var(--accent-color); background: var(--accent-dim); }
+
+/* ── All Notes view ── */
+.search-section {
+  padding: 4px 16px 10px; background: var(--bg-app);
+  display: flex; gap: 8px; align-items: center; flex-shrink: 0;
+}
+.search-wrap { position: relative; flex: 1; }
+.search-input {
+  width: 100%; padding: 9px 30px 9px 12px;
+  border: 1px solid var(--border-color);
+  background: var(--bg-input); color: var(--text-main);
+  border-radius: 8px; font-size: 14px; outline: none; font-family: inherit;
+  transition: border-color var(--t-base), box-shadow var(--t-base);
+}
+.search-input.focused { border-color: var(--accent-color); box-shadow: 0 0 0 2px var(--accent-dim); }
+.clear-btn {
+  position: absolute; right: 6px; top: 50%; transform: translateY(-50%);
+  width: 18px; height: 18px; border: none; background: transparent;
+  color: var(--text-muted); cursor: pointer; border-radius: 50%;
+  display: none; align-items: center; justify-content: center;
+  transition: background var(--t-base), color var(--t-base);
+}
+.clear-btn.visible { display: flex; }
+.clear-btn:hover { background: var(--bg-hover); color: var(--text-main); }
+.clear-btn svg { width: 12px; height: 12px; stroke: currentColor; fill: none; stroke-width: 2; stroke-linecap: round; }
+.sort-select {
+  padding: 9px 8px; border: 1px solid var(--border-color);
+  border-radius: 6px; background: var(--bg-input); color: var(--text-main);
+  font-size: 13px; outline: none; font-family: inherit; flex-shrink: 0;
+}
+
+/* Notes list (matches real .notes-list + .notes-list-header from addNotesListStyles) */
+.notes-scroll {
+  flex: 1; overflow-y: auto; padding: 4px 12px 12px;
+  display: flex; flex-direction: column; gap: 0; min-height: 0;
+  scrollbar-width: thin; scrollbar-color: transparent transparent;
+}
+.notes-scroll:hover { scrollbar-color: var(--bg-hover) transparent; }
+.notes-list-header {
+  padding: 4px 2px 8px; border-bottom: 1px solid var(--border-color);
+  margin-bottom: 6px; display: flex; align-items: center;
+}
+.notes-count {
+  font-size: 10px; font-weight: 600; letter-spacing: 0.06em;
+  text-transform: uppercase; color: var(--text-muted);
+}
+.notes-list { display: flex; flex-direction: column; gap: 8px; }
+
+/* Note items — exact match to real .note-item CSS from addNotesListStyles */
+.note-item {
+  padding: 12px 14px; border: 1px solid var(--border-color);
+  border-radius: 10px; cursor: pointer; background: var(--bg-panel);
+  box-shadow: inset 0 1px 0 rgba(255,255,255,0.03), 0 1px 2px rgba(0,0,0,0.2);
+  transition: background-color var(--t-base), border-color var(--t-base),
+              box-shadow var(--t-base), transform var(--t-fast), opacity var(--t-base);
+  position: relative;
+}
+.note-item:hover {
+  background-color: var(--bg-hover); border-color: var(--text-muted);
+  box-shadow: inset 0 1px 0 rgba(255,255,255,0.04), 0 4px 12px rgba(0,0,0,0.3);
+  transform: translateY(-1px);
+}
+.note-item.pinned  { border-color: rgba(99,102,241,0.35); background: rgba(99,102,241,0.06); }
+.note-item.pinned:hover { background: rgba(99,102,241,0.12); }
+.note-item.archived { opacity: 0.65; }
+.note-item.ghost    { opacity: 0; transform: translateY(-6px); pointer-events: none; transition: opacity 0.25s, transform 0.25s; }
+
+.note-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 6px; }
+.note-subject {
+  font-weight: 500; color: var(--text-main); font-size: 13px;
+  flex: 1; overflow: hidden; white-space: nowrap; text-overflow: ellipsis;
+  display: flex; align-items: center; gap: 5px;
+}
+.note-pin-icon {
+  display: inline-block; vertical-align: middle;
+  width: 12px; height: 12px; margin-right: 4px;
+  flex-shrink: 0; color: var(--accent-color); position: relative; top: -1px;
+}
+.note-pin-icon path, .note-pin-icon line { stroke: currentColor; fill: none; }
+
+.note-meta { display: flex; align-items: center; gap: 4px; }
+.note-platform {
+  font-size: 10px; font-weight: 500; letter-spacing: 0.03em;
+  color: var(--text-muted); background: rgba(24,24,27,0.7);
+  border: 1px solid var(--border-color); padding: 2px 6px;
+  height: 18px; line-height: 14px; border-radius: 8px;
+  text-transform: capitalize; display: inline-flex; align-items: center;
+}
+.note-archived-chip { font-style: italic; }
+
+.note-open-btn {
+  border: none; background: transparent; padding: 4px; border-radius: 50%;
+  cursor: pointer; display: flex; align-items: center; justify-content: center;
+  color: transparent; /* hidden by default, shown on hover/force */
+  transition: background var(--t-base), color var(--t-base);
+}
+.note-item:hover .note-open-btn,
+.note-open-btn.force-show { color: var(--text-muted); }
+.note-open-btn:hover { background: var(--bg-hover); color: var(--accent-color) !important; }
+.note-open-btn svg { width: 16px; height: 16px; stroke: currentColor; fill: none; stroke-width: 1.8; stroke-linecap: round; stroke-linejoin: round; }
+
+.note-kebab-btn {
+  border: none; background: transparent; padding: 4px; border-radius: 50%;
+  cursor: pointer; display: flex; align-items: center; justify-content: center;
+  color: transparent; opacity: 0.35;
+  transition: background var(--t-base), color var(--t-base), opacity var(--t-fast);
+  flex-shrink: 0;
+}
+.note-item:hover .note-kebab-btn,
+.note-kebab-btn.force-show { color: var(--text-muted); opacity: 1; }
+.note-kebab-btn:hover { background: var(--bg-hover); color: var(--text-main) !important; opacity: 1 !important; }
+
+.note-preview {
+  color: var(--text-muted); font-size: 12px; line-height: 1.4;
+  margin-bottom: 6px; white-space: pre-wrap;
+  display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden;
+}
+.note-preview.rtl { direction: rtl; text-align: right; }
+.note-preview mark, .note-subject mark {
+  background: rgba(99,102,241,0.28); color: var(--text-main);
+  border-radius: 2px; padding: 0 1px;
+}
+.note-timestamp { color: var(--text-muted); font-size: 11px; opacity: 0.8; }
+
+/* Archived section (matches real classes) */
+.archived-section-header {
+  display: flex; align-items: center; gap: 5px;
+  font-size: 10px; font-weight: 600; letter-spacing: 0.05em; text-transform: uppercase;
+  color: var(--text-muted); cursor: pointer; padding: 6px 4px 4px;
+  border-radius: 6px; user-select: none;
+  transition: background-color var(--t-fast);
+}
+.archived-section-header:hover { background-color: var(--bg-hover); }
+.archived-chevron {
+  width: 13px; height: 13px; flex-shrink: 0;
+  stroke: currentColor; fill: none; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round;
+  transition: transform var(--t-base);
+}
+.archived-section-header.open .archived-chevron { transform: rotate(90deg); }
+.archived-notes-list { display: flex; flex-direction: column; gap: 8px; padding-top: 4px; }
+
+/* Context menu */
+#ctxMenu {
+  position: absolute; background: var(--bg-panel);
+  border: 1px solid #52525b; border-radius: 10px; padding: 4px;
+  box-shadow: 0 8px 28px rgba(0,0,0,0.55), inset 0 1px 0 rgba(255,255,255,0.04);
+  z-index: 500; min-width: 168px; display: none;
+}
+#ctxMenu.open {
+  display: block;
+  animation: menuIn 0.14s cubic-bezier(0.2,0,0,1) both;
+}
+@keyframes menuIn { from { opacity:0; transform:scale(0.92) translateY(-6px); } to { opacity:1; transform:none; } }
+.ctx-item {
+  padding: 8px 12px; border-radius: 6px;
+  font-size: 13px; font-weight: 500; color: var(--text-main);
+  cursor: pointer; display: flex; align-items: center; gap: 9px;
+  transition: background var(--t-fast);
+}
+.ctx-item:hover, .ctx-item.hl { background: var(--bg-hover); }
+.ctx-item.danger { color: var(--danger); }
+.ctx-item.danger:hover, .ctx-item.danger.hl { background: rgba(239,68,68,0.1); }
+.ctx-item svg { width: 14px; height: 14px; stroke: currentColor; fill: none; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; flex-shrink: 0; }
+.ctx-sep { height: 1px; background: var(--border-color); margin: 4px 0; }
+
+/* Undo toast */
+.undo-toast {
+  position: absolute; bottom: 16px; left: 50%; transform: translateX(-50%);
+  background: var(--bg-panel); border: 1px solid #52525b; border-radius: 10px;
+  padding: 10px 14px; font-size: 13px; color: var(--text-main);
+  box-shadow: inset 0 1px 0 rgba(255,255,255,0.04), 0 6px 24px rgba(0,0,0,0.55);
+  z-index: 600; display: none; align-items: center; gap: 8px; white-space: nowrap;
+  overflow: hidden;
+}
+.undo-toast.visible {
+  display: flex;
+  animation: toastIn 0.18s cubic-bezier(0.2,0,0,1) both;
+}
+@keyframes toastIn { from { opacity:0; transform:translateX(-50%) translateY(10px); } to { opacity:1; transform:translateX(-50%) translateY(0); } }
+.undo-btn {
+  background: transparent; color: var(--accent-color);
+  border: none; font-weight: 600; cursor: pointer;
+  padding: 3px 8px; border-radius: 6px; font-size: 13px; font-family: inherit;
+  transition: background var(--t-base);
+}
+.undo-btn:hover { background: var(--bg-hover); }
+.toast-bar {
+  position: absolute; bottom: 0; left: 0; right: 0;
+  height: 3px; background: var(--accent-color);
+  border-radius: 0 0 10px 10px; transform-origin: left; transform: scaleX(1);
+}
+.toast-bar.drain { transition: transform 5s linear; transform: scaleX(0); }
+
+/* ─── SCENE LABEL ───────────────────────────────────────── */
+#scene-label {
+  position: absolute;
+  bottom: 28px;
+  left: 50%;
+  transform: translateX(-50%) translateY(10px);
+  background: rgba(15,15,18,0.88);
+  backdrop-filter: blur(12px);
+  border: 1px solid rgba(99,102,241,0.4);
+  border-radius: 24px;
+  padding: 10px 22px;
+  font-size: 15px;
+  font-weight: 600;
+  color: #c7d2fe;
+  pointer-events: none;
+  z-index: 20;
+  opacity: 0;
+  transition: opacity 0.35s ease, transform 0.35s ease;
+  font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+  white-space: nowrap;
+  letter-spacing: 0.01em;
+}
+#scene-label.visible { opacity: 1; transform: translateX(-50%) translateY(0); }
+
+/* ─── FAKE CURSOR ─────────────────────────────────────── */
+#cursor {
+  position: fixed; width: 10px; height: 10px;
+  background: rgba(255,255,255,0.92); border-radius: 50%;
+  pointer-events: none; z-index: 9999;
+  transform: translate(-50%,-50%);
+  box-shadow: 0 1px 5px rgba(0,0,0,0.45), 0 0 0 1px rgba(255,255,255,0.1);
+  transition: left 0.38s cubic-bezier(0.2,0,0,1), top 0.38s cubic-bezier(0.2,0,0,1), transform 0.1s;
+  opacity: 0;
+}
+#cursor.on  { opacity: 1; }
+#cursor.clk { transform: translate(-50%,-50%) scale(0.6); }
+</style>
+</head>
+<body>
+<div id="demo">
+
+  <!-- ═══════════════════════════════════════════════
+       GMAIL LIGHT MODE
+       ═══════════════════════════════════════════════ -->
+  <div id="gmail">
+    <div class="gm-header">
+      <div class="gm-menu-btn">
+        <svg viewBox="0 0 24 24"><path d="M3 18h18v-2H3v2zm0-5h18v-2H3v2zm0-7v2h18V6H3z"/></svg>
+      </div>
+      <div class="gm-search">
+        <svg viewBox="0 0 24 24"><path d="M15.5 14h-.79l-.28-.27A6.47 6.47 0 0 0 16 9.5 6.5 6.5 0 1 0 9.5 16c1.61 0 3.09-.59 4.23-1.57l.27.28v.79l5 4.99L20.49 19l-4.99-5zm-6 0C7.01 14 5 11.99 5 9.5S7.01 5 9.5 5 14 7.01 14 9.5 11.99 14 9.5 14z"/></svg>
+        <span>Search mail</span>
+        <div class="gm-search-opts"><svg viewBox="0 0 24 24"><path d="M10 18h4v-2h-4v2zM3 6v2h18V6H3zm3 7h12v-2H6v2z"/></svg></div>
+      </div>
+      <div class="gm-header-right">
+        <div class="gm-icon-btn" title="Help"><svg viewBox="0 0 24 24"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm1 17h-2v-2h2v2zm2.07-7.75l-.9.92C13.45 12.9 13 13.5 13 15h-2v-.5c0-1.1.45-2.1 1.17-2.83l1.24-1.26c.37-.36.59-.86.59-1.41 0-1.1-.9-2-2-2s-2 .9-2 2H8c0-2.21 1.79-4 4-4s4 1.79 4 4c0 .88-.36 1.68-.93 2.25z"/></svg></div>
+        <div class="gm-icon-btn" title="Settings"><svg viewBox="0 0 24 24"><path d="M19.14,12.94c0.04-0.3,0.06-0.61,0.06-0.94c0-0.32-0.02-0.64-0.07-0.94l2.03-1.58c0.18-0.14,0.23-0.41,0.12-0.61 l-1.92-3.32c-0.12-0.22-0.37-0.29-0.59-0.22l-2.39,0.96c-0.5-0.38-1.03-0.7-1.62-0.94L14.4,2.81c-0.04-0.24-0.24-0.41-0.48-0.41 h-3.84c-0.24,0-0.43,0.17-0.47,0.41L9.25,5.35C8.66,5.59,8.12,5.92,7.63,6.29L5.24,5.33c-0.22-0.08-0.47,0-0.59,0.22L2.74,8.87 C2.62,9.08,2.66,9.34,2.86,9.48l2.03,1.58C4.84,11.36,4.8,11.69,4.8,12s0.02,0.64,0.07,0.94l-2.03,1.58 c-0.18,0.14-0.23,0.41-0.12,0.61l1.92,3.32c0.12,0.22,0.37,0.29,0.59,0.22l2.39-0.96c0.5,0.38,1.03,0.7,1.62,0.94l0.36,2.54 c0.05,0.24,0.24,0.41,0.48,0.41h3.84c0.24,0,0.44-0.17,0.47-0.41l0.36-2.54c0.59-0.24,1.13-0.56,1.62-0.94l2.39,0.96 c0.22,0.08,0.47,0,0.59-0.22l1.92-3.32c0.12-0.22,0.07-0.47-0.12-0.61L19.14,12.94z M12,15.6c-1.98,0-3.6-1.62-3.6-3.6 s1.62-3.6,3.6-3.6s3.6,1.62,3.6,3.6S13.98,15.6,12,15.6z"/></svg></div>
+        <div class="gm-icon-btn" title="Google apps"><svg viewBox="0 0 24 24"><path d="M6,8c1.1,0 2,-0.9 2,-2s-0.9,-2 -2,-2 -2,0.9 -2,2 0.9,2 2,2zM12,20c1.1,0 2,-0.9 2,-2s-0.9,-2 -2,-2 -2,0.9 -2,2 0.9,2 2,2zM6,20c1.1,0 2,-0.9 2,-2s-0.9,-2 -2,-2 -2,0.9 -2,2 0.9,2 2,2zM6,14c1.1,0 2,-0.9 2,-2s-0.9,-2 -2,-2 -2,0.9 -2,2 0.9,2 2,2zM12,14c1.1,0 2,-0.9 2,-2s-0.9,-2 -2,-2 -2,0.9 -2,2 0.9,2 2,2zM16,6c0,1.1 0.9,2 2,2s2,-0.9 2,-2 -0.9,-2 -2,-2 -2,0.9 -2,2zM12,8c1.1,0 2,-0.9 2,-2s-0.9,-2 -2,-2 -2,0.9 -2,2 0.9,2 2,2zM18,14c1.1,0 2,-0.9 2,-2s-0.9,-2 -2,-2 -2,0.9 -2,2 0.9,2 2,2zM18,20c1.1,0 2,-0.9 2,-2s-0.9,-2 -2,-2 -2,0.9 -2,2 0.9,2 2,2z"/></svg></div>
+        <div class="gm-avatar">A</div>
+      </div>
+    </div>
+
+    <div class="gm-body">
+      <!-- Left nav -->
+      <div class="gm-nav">
+        <div class="gm-compose">
+          <svg viewBox="0 0 24 24" fill="none" stroke="#001d35" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 20h9"/><path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5z"/></svg>
+          Compose
+        </div>
+        <div class="gm-nav-row active">
+          <svg viewBox="0 0 24 24"><path d="M20 4H4c-1.1 0-2 .9-2 2v12c0 1.1.9 2 2 2h16c1.1 0 2-.9 2-2V6c0-1.1-.9-2-2-2zm0 4l-8 5-8-5V6l8 5 8-5v2z"/></svg>
+          Inbox <span class="badge">23</span>
+        </div>
+        <div class="gm-nav-row">
+          <svg viewBox="0 0 24 24"><path d="M12 17.27L18.18 21l-1.64-7.03L22 9.24l-7.19-.61L12 2 9.19 8.63 2 9.24l5.46 4.73L5.82 21z"/></svg>
+          Starred
+        </div>
+        <div class="gm-nav-row">
+          <svg viewBox="0 0 24 24"><path d="M2.01 21L23 12 2.01 3 2 10l15 2-15 2z"/></svg>
+          Sent
+        </div>
+        <div class="gm-nav-row">
+          <svg viewBox="0 0 24 24"><path d="M20 2H4c-1.1 0-2 .9-2 2v18l4-4h14c1.1 0 2-.9 2-2V4c0-1.1-.9-2-2-2z"/></svg>
+          Drafts <span class="badge">3</span>
+        </div>
+        <div class="gm-nav-row" style="margin-top:4px;color:#5f6368;">
+          <svg viewBox="0 0 24 24"><path d="M7.41 8.59L12 13.17l4.59-4.58L18 10l-6 6-6-6 1.41-1.41z"/></svg>
+          More
+        </div>
+      </div>
+
+      <!-- Thread content (two views, one visible at a time) -->
+      <div class="gm-thread-wrap">
+        <div id="scene-label"></div>
+        <!-- View 1: Investor update -->
+        <div class="gm-thread-view" id="gmv-investor">
+          <div class="gm-thread-controls">
+            <div class="gm-back-btn"><svg viewBox="0 0 24 24"><path d="M20 11H7.83l5.59-5.59L12 4l-8 8 8 8 1.41-1.41L7.83 13H20v-2z"/></svg></div>
+            <div class="gm-ctrl-btn" title="Archive"><svg viewBox="0 0 24 24"><path d="M20.54 5.23l-1.39-1.68C18.88 3.21 18.47 3 18 3H6c-.47 0-.88.21-1.16.55L3.46 5.23C3.17 5.57 3 6.02 3 6.5V19c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2V6.5c0-.48-.17-.93-.46-1.27zM12 17.5L6.5 12H10v-2h4v2h3.5L12 17.5zM5.12 5l.81-1h12l.94 1H5.12z"/></svg></div>
+            <div class="gm-ctrl-btn" title="Delete"><svg viewBox="0 0 24 24"><path d="M6 19c0 1.1.9 2 2 2h8c1.1 0 2-.9 2-2V7H6v12zM19 4h-3.5l-1-1h-5l-1 1H5v2h14V4z"/></svg></div>
+            <div class="gm-ctrl-btn" title="Mark as unread"><svg viewBox="0 0 24 24"><path d="M20 4H4c-1.1 0-2 .9-2 2v12c0 1.1.9 2 2 2h16c1.1 0 2-.9 2-2V6c0-1.1-.9-2-2-2zm0 4l-8 5-8-5V6l8 5 8-5v2z"/></svg></div>
+            <div class="gm-ctrl-btn" title="More" style="margin-left:auto"><svg viewBox="0 0 24 24"><path d="M12 8c1.1 0 2-.9 2-2s-.9-2-2-2-2 .9-2 2 .9 2 2 2zm0 2c-1.1 0-2 .9-2 2s.9 2 2 2 2-.9 2-2-.9-2-2-2zm0 6c-1.1 0-2 .9-2 2s.9 2 2 2 2-.9 2-2-.9-2-2-2z"/></svg></div>
+          </div>
+          <div class="gm-subject-row">
+            <div class="gm-subject-text">Investor update — Series B</div>
+            <div class="gm-label-chip inbox">Inbox</div>
+          </div>
+          <div class="gm-msg-header">
+            <div class="gm-msg-avatar" style="background:#1a73e8">D</div>
+            <div class="gm-msg-meta">
+              <div class="gm-msg-sender">David Chen <span>&lt;d.chen@venture.co&gt;</span></div>
+              <div class="gm-msg-to">to me</div>
+            </div>
+            <div class="gm-msg-time">Mon, Jun 9 · 2:41 PM</div>
+          </div>
+          <div class="gm-msg-body">
+            <p>Hi,</p>
+            <p>Following up on our last call — the partners are keen to move forward but want to review the Q3 numbers before the term sheet goes out. Can you have the updated deck ready by Friday?</p>
+            <p>Also, the associates will need access to the data room by Thursday. Let me know if that works.</p>
+            <p>Best,<br>David</p>
+          </div>
+          <div class="gm-reply-row">
+            <div class="gm-reply-btn"><svg viewBox="0 0 24 24"><path d="M10 9V5l-7 7 7 7v-4.1c5 0 8.5 1.6 11 5.1-1-5-4-10-11-11z"/></svg>Reply</div>
+            <div class="gm-reply-btn"><svg viewBox="0 0 24 24"><path d="M7 8V5l-7 7 7 7v-3l-4-4 4-4zm6 1V5l7 7-7 7v-3.1c-5 0-8.5 1.6-11 5.1 1-5 4-10 11-11z"/></svg>Forward</div>
+          </div>
+        </div>
+
+        <!-- View 2: Q4 Budget Review -->
+        <div class="gm-thread-view hidden" id="gmv-budget">
+          <div class="gm-thread-controls">
+            <div class="gm-back-btn"><svg viewBox="0 0 24 24"><path d="M20 11H7.83l5.59-5.59L12 4l-8 8 8 8 1.41-1.41L7.83 13H20v-2z"/></svg> Inbox</div>
+            <div class="gm-ctrl-btn" title="Archive"><svg viewBox="0 0 24 24"><path d="M20.54 5.23l-1.39-1.68C18.88 3.21 18.47 3 18 3H6c-.47 0-.88.21-1.16.55L3.46 5.23C3.17 5.57 3 6.02 3 6.5V19c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2V6.5c0-.48-.17-.93-.46-1.27zM12 17.5L6.5 12H10v-2h4v2h3.5L12 17.5zM5.12 5l.81-1h12l.94 1H5.12z"/></svg></div>
+            <div class="gm-ctrl-btn" title="Delete"><svg viewBox="0 0 24 24"><path d="M6 19c0 1.1.9 2 2 2h8c1.1 0 2-.9 2-2V7H6v12zM19 4h-3.5l-1-1h-5l-1 1H5v2h14V4z"/></svg></div>
+            <div class="gm-ctrl-btn" title="More" style="margin-left:auto"><svg viewBox="0 0 24 24"><path d="M12 8c1.1 0 2-.9 2-2s-.9-2-2-2-2 .9-2 2 .9 2 2 2zm0 2c-1.1 0-2 .9-2 2s.9 2 2 2 2-.9 2-2-.9-2-2-2zm0 6c-1.1 0-2 .9-2 2s.9 2 2 2 2-.9 2-2-.9-2-2-2z"/></svg></div>
+          </div>
+          <div class="gm-subject-row">
+            <div class="gm-subject-text">Q4 Budget Review</div>
+            <div class="gm-label-chip inbox">Inbox</div>
+          </div>
+          <div class="gm-msg-header">
+            <div class="gm-msg-avatar" style="background:#34a853">S</div>
+            <div class="gm-msg-meta">
+              <div class="gm-msg-sender">Sarah Mitchell <span>&lt;s.mitchell@company.com&gt;</span></div>
+              <div class="gm-msg-to">to me, finance-team</div>
+            </div>
+            <div class="gm-msg-time">Today · 10:14 AM</div>
+          </div>
+          <div class="gm-msg-body">
+            <p>Hi team,</p>
+            <p>Sharing the Q4 budget spreadsheet for review. I still need headcount approvals from each department before I can close the model — Finance needs the final numbers by Wednesday EOD.</p>
+            <p>Can everyone confirm their headcount additions by tomorrow? Let me know if you have questions.</p>
+            <p>Thanks,<br>Sarah</p>
+          </div>
+          <div class="gm-reply-row">
+            <div class="gm-reply-btn"><svg viewBox="0 0 24 24"><path d="M10 9V5l-7 7 7 7v-4.1c5 0 8.5 1.6 11 5.1-1-5-4-10-11-11z"/></svg>Reply</div>
+            <div class="gm-reply-btn"><svg viewBox="0 0 24 24"><path d="M7 8V5l-7 7 7 7v-3l-4-4 4-4zm6 1V5l7 7-7 7v-3.1c-5 0-8.5 1.6-11 5.1 1-5 4-10 11-11z"/></svg>Forward</div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div><!-- /gmail -->
+
+  <!-- ═══════════════════════════════════════════════
+       EXTENSION SIDEBAR — DARK
+       ═══════════════════════════════════════════════ -->
+  <div id="sidebar">
+    <div class="sb-header">
+      <div class="sb-button-row">
+        <button class="sb-tab active" id="tabThread">Current Thread</button>
+        <button class="sb-tab" id="tabAll">All Notes</button>
+      </div>
+      <button class="sb-gear-btn" id="gearBtn">
+        <div class="gear-inner">
+          <svg class="sb-icon" viewBox="0 0 24 24">
+            <circle cx="12" cy="12" r="3"/>
+            <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9"/>
+          </svg>
+        </div>
+      </button>
+    </div>
+
+    <div class="sb-settings" id="sbSettings">
+      <div class="sb-settings-inner">
+        <div class="settings-label">Backup &amp; Data</div>
+        <button class="settings-btn">
+          <svg class="sb-icon" viewBox="0 0 24 24"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+          Export All Notes
+        </button>
+        <div class="settings-label">Storage</div>
+        <div class="storage-meter"><div class="storage-fill" id="storageFill"></div></div>
+        <div class="help-text" id="storageText">Calculating…</div>
+      </div>
+    </div>
+
+    <div class="sb-content">
+
+      <!-- Thread view -->
+      <div class="sb-view active" id="viewThread">
+        <div class="thread-info-bar">
+          <div class="tinfo-subject">
+            <svg viewBox="0 0 24 24"><path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"/><polyline points="22,6 12,13 2,6"/></svg>
+            <span id="threadSubjectSpan">Investor update — Series B</span>
+          </div>
+          <div class="tinfo-meta" id="threadMetaSpan">Gmail · account@gmail.com</div>
+        </div>
+        <div class="editor-area empty" id="editorArea"></div>
+        <div class="notes-footer">
+          <div class="save-status">
+            <div class="status-dot" id="statusDot"></div>
+            <span id="statusText">Ready</span>
+          </div>
+          <div class="notes-actions">
+            <button class="icon-btn save-btn" title="Save">
+              <svg class="sb-icon" viewBox="0 0 24 24"><path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"/><polyline points="17 21 17 13 7 13 7 21"/><polyline points="7 3 7 8 15 8"/></svg>
+            </button>
+            <button class="icon-btn" title="Pin">
+              <svg class="sb-icon" viewBox="0 0 24 24"><line x1="12" y1="17" x2="12" y2="22"/><path d="M5 17h14v-1.76a2 2 0 0 0-1.11-1.79l-1.78-.9A2 2 0 0 1 15 10.76V6h1a2 2 0 0 0 0-4H8a2 2 0 0 0 0 4h1v4.76a2 2 0 0 1-1.11 1.79l-1.78.9A2 2 0 0 0 5 15.24Z"/></svg>
+            </button>
+            <button class="icon-btn" title="Archive">
+              <svg class="sb-icon" viewBox="0 0 24 24"><polyline points="21 8 21 21 3 21 3 8"/><rect x="1" y="3" width="22" height="5"/><line x1="10" y1="12" x2="14" y2="12"/></svg>
+            </button>
+            <button class="icon-btn del-btn" title="Delete">
+              <svg class="sb-icon" viewBox="0 0 24 24"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg>
+            </button>
+          </div>
+        </div>
+      </div>
+
+      <!-- All Notes view -->
+      <div class="sb-view" id="viewAll">
+        <div class="search-section">
+          <div class="search-wrap">
+            <input type="text" class="search-input" id="searchInput" placeholder="Search notes..." readonly>
+            <button class="clear-btn" id="clearBtn">
+              <svg viewBox="0 0 24 24"><line x1="6" y1="6" x2="18" y2="18"/><line x1="6" y1="18" x2="18" y2="6"/></svg>
+            </button>
+          </div>
+          <select class="sort-select"><option>Recent First</option><option>Oldest First</option><option>By Subject</option><option>Recent activity</option></select>
+        </div>
+        <div class="notes-scroll">
+          <div class="notes-list-header"><span class="notes-count" id="notesCount">6 notes</span></div>
+          <div class="notes-list" id="notesList"></div>
+        </div>
+      </div>
+
+    </div>
+
+    <!-- Context menu: direct child of #sidebar so .sb-content overflow:hidden can't clip it -->
+    <div id="ctxMenu">
+      <div class="ctx-item" id="ctxPin">
+        <svg viewBox="0 0 24 24"><line x1="12" y1="17" x2="12" y2="22"/><path d="M5 17h14v-1.76a2 2 0 0 0-1.11-1.79l-1.78-.9A2 2 0 0 1 15 10.76V6h1a2 2 0 0 0 0-4H8a2 2 0 0 0 0 4h1v4.76a2 2 0 0 1-1.11 1.79l-1.78.9A2 2 0 0 0 5 15.24Z"/></svg>
+        Pin
+      </div>
+      <div class="ctx-item" id="ctxArchive">
+        <svg viewBox="0 0 24 24"><polyline points="21 8 21 21 3 21 3 8"/><rect x="1" y="3" width="22" height="5"/><line x1="10" y1="12" x2="14" y2="12"/></svg>
+        Archive
+      </div>
+      <div class="ctx-sep"></div>
+      <div class="ctx-item danger" id="ctxDelete">
+        <svg viewBox="0 0 24 24"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg>
+        Delete
+      </div>
+    </div>
+
+    <div class="undo-toast" id="undoToast">
+      <span>Note archived —&nbsp;</span>
+      <button class="undo-btn" id="undoBtn">Undo</button>
+      <div class="toast-bar" id="toastBar"></div>
+    </div>
+  </div><!-- /sidebar -->
+
+</div><!-- /demo -->
+<div id="cursor"></div>
+
+<script>
+// ─── NOTES DATA ────────────────────────────────────────────────
+const SOURCE = [
+  { id:'n1', subject:'Q4 Budget Review',
+    preview:'Follow up with Sarah on headcount approvals before month end. Finance needs final numbers by Wednesday.',
+    platform:'gmail', time:'3h ago', pinned:false, archived:false },
+  { id:'n2', subject:'Product roadmap feedback',
+    preview:'Design assets ready. Ask Lior about mobile timeline — need decision before sprint planning on Friday.',
+    platform:'gmail', time:'1d ago', pinned:false, archived:false },
+  { id:'n3', subject:'פגישת צוות — עדכון רבעוני',
+    preview:'לבדוק אם אפשר לדחות לשבוע הבא. לשאול את רון לגבי המצגת ועדכון התקציב.',
+    platform:'gmail', time:'2d ago', pinned:false, archived:false, rtl:true },
+  { id:'n4', subject:'Contract renewal — Acme Corp',
+    preview:'Legal review still pending. DO NOT sign until procurement approves. Budget item confirmed.',
+    platform:'outlook', time:'3d ago', pinned:false, archived:false },
+  { id:'n5', subject:'Onboarding: Alex Chen',
+    preview:'Laptop ordered. Add to #engineering Slack. First week: shadow Dan on Mon, code review Tue.',
+    platform:'gmail', time:'5d ago', pinned:false, archived:false },
+  { id:'n6', subject:'Weekly standup notes',
+    preview:'Action items: deploy hotfix by Thursday, update stakeholders Friday, retro next week.',
+    platform:'gmail', time:'1w ago', pinned:false, archived:false },
+];
+let notes = SOURCE.map(n=>({...n}));
+
+// ─── HELPERS ───────────────────────────────────────────────────
+function esc(s){ return s.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;'); }
+function hl(text,term){
+  if(!term) return esc(text);
+  const e=esc(text), t=esc(term);
+  return e.replace(new RegExp(t.replace(/[.*+?^${}()|[\]\\]/g,'\\$&'),'gi'),m=>`<mark>${m}</mark>`);
+}
+function center(el){ const r=el.getBoundingClientRect(); return {x:r.left+r.width/2, y:r.top+r.height/2}; }
+function go(ms,fn){ setTimeout(fn,ms); }
+
+// ─── SCENE LABELS ──────────────────────────────────────────────
+const lbl = document.getElementById('scene-label');
+function showLabel(text, cb){ lbl.textContent=text; lbl.classList.add('visible'); go(340, cb||(()=>{})); }
+function hideLabel(cb){ lbl.classList.remove('visible'); go(320, cb||(()=>{})); }
+
+// ─── RENDER SIDEBAR NOTES LIST ──────────────────────────────────
+function buildCard(n,term=''){
+  const pin = n.pinned
+    ? `<svg class="note-pin-icon" viewBox="0 0 24 24" fill="none" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="17" x2="12" y2="22"/><path d="M5 17h14v-1.76a2 2 0 0 0-1.11-1.79l-1.78-.9A2 2 0 0 1 15 10.76V6h1a2 2 0 0 0 0-4H8a2 2 0 0 0 0 4h1v4.76a2 2 0 0 1-1.11 1.79l-1.78.9A2 2 0 0 0 5 15.24Z"/></svg>`
+    : '';
+  const arch = n.archived ? `<span class="note-platform note-archived-chip">archived</span>` : '';
+  return `
+    <div class="note-item${n.pinned?' pinned':''}${n.archived?' archived':''}" data-id="${n.id}">
+      <div class="note-header">
+        <div class="note-subject">${pin}${hl(n.subject,term)}</div>
+        <div class="note-meta">
+          ${arch}
+          <button class="note-open-btn" tabindex="-1">
+            <svg viewBox="0 0 24 24"><path d="M7 17L17 7"/><polyline points="11,7 17,7 17,13"/></svg>
+          </button>
+          <button class="note-kebab-btn" tabindex="-1">
+            <svg viewBox="0 0 24 24" width="16" height="16" fill="currentColor">
+              <circle cx="12" cy="5" r="1.5"/><circle cx="12" cy="12" r="1.5"/><circle cx="12" cy="19" r="1.5"/>
+            </svg>
+          </button>
+        </div>
+      </div>
+      <div class="note-preview${n.rtl?' rtl':''}">${hl(n.preview,term)}</div>
+      <div class="note-timestamp">${n.time}</div>
+    </div>`;
+}
+function renderNotes(term=''){
+  const pinned   = notes.filter(n=>n.pinned&&!n.archived);
+  const active   = notes.filter(n=>!n.pinned&&!n.archived);
+  const archived = notes.filter(n=>n.archived);
+  const all = [...pinned,...active];
+  let html = all.map(n=>buildCard(n,term)).join('');
+  if(archived.length){
+    html += `
+      <div class="archived-section-header open">
+        <svg class="archived-chevron" viewBox="0 0 24 24" style="transform:rotate(90deg)"><polyline points="9 18 15 12 9 6"/></svg>
+        Archived (${archived.length})
+      </div>
+      <div class="archived-notes-list">${archived.map(n=>buildCard(n,term)).join('')}</div>`;
+  }
+  document.getElementById('notesList').innerHTML = html;
+  const cnt = all.length;
+  document.getElementById('notesCount').textContent =
+    `${cnt} note${cnt!==1?'s':''}${archived.length?` · ${archived.length} archived`:''}`;
+}
+
+// ─── FAKE CURSOR ───────────────────────────────────────────────
+const cur = document.getElementById('cursor');
+function moveTo(x,y,cb,ms=380){ cur.style.left=x+'px'; cur.style.top=y+'px'; go(ms,cb||(()=>{})); }
+function click(x,y,cb){
+  moveTo(x,y,()=>{
+    cur.classList.add('clk');
+    go(140,()=>{ cur.classList.remove('clk'); go(80,cb||(()=>{})); });
+  });
+}
+
+// ─── TYPING ────────────────────────────────────────────────────
+function typeNote(el,text,cb){
+  el.classList.remove('empty'); el.innerHTML='';
+  const caret=document.createElement('span'); caret.className='editor-cursor'; el.appendChild(caret);
+  let i=0;
+  function nx(){
+    if(i<text.length){
+      const tn=el.childNodes[0];
+      if(tn&&tn.nodeType===Node.TEXT_NODE) tn.textContent=text.slice(0,i+1);
+      else el.insertBefore(document.createTextNode(text.slice(0,i+1)),caret);
+      i++; go(50+Math.random()*28,nx);
+    } else { go(200,()=>{ caret.remove(); cb&&cb(); }); }
+  }
+  nx();
+}
+function typeSearch(text,cb){
+  const el=document.getElementById('searchInput'); let i=0;
+  function nx(){ if(i<text.length){ el.value=text.slice(0,i+1); i++; go(120+Math.random()*40,nx); } else cb&&cb(); }
+  nx();
+}
+
+// ─── SWITCH GMAIL THREAD ────────────────────────────────────────
+function switchGmailThread(viewId){
+  document.querySelectorAll('.gm-thread-view').forEach(v=>v.classList.add('hidden'));
+  document.getElementById(viewId).classList.remove('hidden');
+}
+
+// ─── SWITCH SIDEBAR THREAD VIEW ─────────────────────────────────
+function showSidebarThread(subject, meta, noteText){
+  const ed=document.getElementById('editorArea');
+  const dot=document.getElementById('statusDot');
+  const txt=document.getElementById('statusText');
+  document.getElementById('threadSubjectSpan').textContent=subject;
+  document.getElementById('threadMetaSpan').textContent=meta;
+  ed.classList.remove('empty');
+  ed.textContent=noteText;
+  dot.className='status-dot saved'; txt.textContent='Saved';
+}
+
+// ─── MAIN LOOP ─────────────────────────────────────────────────
+function reset(){
+  notes=SOURCE.map(n=>({...n}));
+  const ed=document.getElementById('editorArea');
+  const dot=document.getElementById('statusDot');
+  const txt=document.getElementById('statusText');
+  ed.innerHTML=''; ed.classList.add('empty');
+  dot.className='status-dot'; txt.textContent='Ready';
+  document.getElementById('tabThread').classList.add('active');
+  document.getElementById('tabAll').classList.remove('active');
+  document.getElementById('viewThread').classList.add('active');
+  document.getElementById('viewAll').classList.remove('active');
+  document.getElementById('threadSubjectSpan').textContent='Investor update — Series B';
+  document.getElementById('threadMetaSpan').textContent='Gmail · account@gmail.com';
+  document.getElementById('searchInput').value='';
+  document.getElementById('searchInput').classList.remove('focused');
+  document.getElementById('clearBtn').classList.remove('visible');
+  document.getElementById('ctxMenu').classList.remove('open');
+  document.getElementById('undoToast').classList.remove('visible');
+  document.getElementById('sbSettings').classList.remove('open');
+  document.getElementById('gearBtn').classList.remove('active');
+  const fill=document.getElementById('storageFill');
+  fill.style.transition='none'; fill.style.width='0%';
+  document.getElementById('storageText').textContent='Calculating…';
+  switchGmailThread('gmv-investor');
+  renderNotes();
+  lbl.classList.remove('visible');
+  cur.classList.add('on');
+}
+
+function run(){
+  reset();
+
+  const ed    = document.getElementById('editorArea');
+  const dot   = document.getElementById('statusDot');
+  const txt   = document.getElementById('statusText');
+  const tabTh = document.getElementById('tabThread');
+  const tabAll= document.getElementById('tabAll');
+  const vTh   = document.getElementById('viewThread');
+  const vAll  = document.getElementById('viewAll');
+
+  // ── Scene 1: type note in Thread view ──────────────────────
+  go(500,()=>{
+    showLabel('Notes auto-save as you type');
+    const p=center(ed);
+    click(p.x,p.y,()=>{
+      dot.className='status-dot typing'; txt.textContent='Typing…';
+      go(150,()=>{
+        typeNote(ed,'Investors want Q3 metrics before committing. Ask David for deck by Friday — data room access by Thu.',()=>{
+          dot.className='status-dot saved'; txt.textContent='Saved';
+
+          // ── Scene 2: switch to All Notes ───────────────────
+          go(1600,()=>{
+            hideLabel(()=>{
+              const p=center(tabAll);
+              click(p.x,p.y,()=>{
+                tabTh.classList.remove('active'); tabAll.classList.add('active');
+                vTh.classList.remove('active');   vAll.classList.add('active');
+                renderNotes();
+                showLabel('Every thread’s notes in one place');
+
+                // ── Scene 3: Open Thread on Q4 Budget Review ───
+                go(1200,()=>{
+                  hideLabel(()=>{
+                    const card=document.querySelector('[data-id="n1"]');
+                    const openBtn=card.querySelector('.note-open-btn');
+                    openBtn.classList.add('force-show');
+                    const cardP=center(card);
+
+                    moveTo(cardP.x,cardP.y,()=>{
+                      go(300,()=>{
+                        const op=center(openBtn);
+                        click(op.x,op.y,()=>{
+                          openBtn.classList.remove('force-show');
+                          switchGmailThread('gmv-budget');
+                          tabAll.classList.remove('active'); tabTh.classList.add('active');
+                          vAll.classList.remove('active');   vTh.classList.add('active');
+                          showSidebarThread(
+                            'Q4 Budget Review',
+                            'Gmail · account@gmail.com',
+                            'Follow up with Sarah on headcount approvals before month end. Finance needs final numbers by Wednesday.'
+                          );
+                          showLabel('↗ Open Thread — jump straight to the email');
+
+                          // ── Scene 4: back to All Notes ────────────────────────
+                          go(2600,()=>{
+                            hideLabel(()=>{
+                              const p=center(tabAll);
+                              click(p.x,p.y,()=>{
+                                tabTh.classList.remove('active'); tabAll.classList.add('active');
+                                vTh.classList.remove('active');   vAll.classList.add('active');
+                                renderNotes();
+
+                                // ── Scene 5: Pin via kebab ─────────────────
+                                go(1100,()=>{
+                                  const card=document.querySelector('[data-id="n1"]');
+                                  const kebab=card.querySelector('.note-kebab-btn');
+                                  kebab.classList.add('force-show');
+                                  const cR=card.getBoundingClientRect();
+                                  const sbR=document.getElementById('sidebar').getBoundingClientRect();
+
+                                  moveTo(center(card).x,center(card).y,()=>{
+                                    go(300,()=>{
+                                      const kp=center(kebab);
+                                      click(kp.x,kp.y,()=>{
+                                        kebab.classList.remove('force-show');
+                                        const ctx=document.getElementById('ctxMenu');
+                                        ctx.style.top=(cR.bottom-sbR.top+4)+'px';
+                                        ctx.style.right='10px'; ctx.style.left='auto';
+                                        ctx.classList.add('open');
+
+                                        go(500,()=>{
+                                          const pinItem=document.getElementById('ctxPin');
+                                          pinItem.classList.add('hl');
+                                          const pp=center(pinItem);
+                                          moveTo(pp.x,pp.y,()=>{
+                                            go(280,()=>{
+                                              click(pp.x,pp.y,()=>{
+                                                ctx.classList.remove('open');
+                                                pinItem.classList.remove('hl');
+                                                notes.find(n=>n.id==='n1').pinned=true;
+                                                renderNotes();
+                                                showLabel('Pin important threads to the top');
+
+                                                // ── Scene 6: search "budget" ──────────
+                                                go(1500,()=>{
+                                                  hideLabel(()=>{
+                                                    const si=document.getElementById('searchInput');
+                                                    const cb=document.getElementById('clearBtn');
+                                                    const sp=center(si);
+                                                    click(sp.x,sp.y,()=>{
+                                                      si.classList.add('focused');
+                                                      go(200,()=>{
+                                                        typeSearch('budget',()=>{
+                                                          cb.classList.add('visible');
+                                                          renderNotes('budget');
+                                                          showLabel('Search highlights across all your notes');
+
+                                                          // ── Scene 7: clear + loop ─────────────
+                                                          go(2200,()=>{
+                                                            hideLabel(()=>{
+                                                              const cp=center(cb);
+                                                              click(cp.x,cp.y,()=>{
+                                                                si.value=''; si.classList.remove('focused');
+                                                                cb.classList.remove('visible');
+                                                                renderNotes();
+                                                                cur.classList.remove('on');
+                                                                go(1200,run);
+                                                              });
+                                                            });
+                                                          });
+                                                        });
+                                                      });
+                                                    });
+                                                  });
+                                                });
+                                              });
+                                            });
+                                          });
+                                        });
+                                      });
+                                    });
+                                  });
+                                });
+                              });
+                            });
+                          });
+                        });
+                      });
+                    });
+                  });
+                });
+              });
+            });
+          });
+        });
+      });
+    });
+  });
+}
+
+go(400,run);
+</script>
+</body>
+</html>
