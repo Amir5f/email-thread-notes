@@ -2,15 +2,34 @@
 .claude/
 CLAUDE.local.md
 
-# Development documentation (too messy for public)
+# Development documentation (internal, not for public)
 email_thread_notes_prd.md
 todos.md
 todos_old_Aug18.md
 backlog.md
 CONTRIBUTING.md
+CLOUD_SYNC_SETUP.md
+IMPLEMENTATION_PLAN.md
+MIGRATION_FIX.md
+MILKDOWN_RTL_TEST_INSTRUCTIONS.md
+READY_TO_IMPLEMENT.md
+RTL_SUPPORT_ANALYSIS.md
+STRUCTURE.md
+UI_MOCKUPS.md
+UI_OPTIONS_COMPARISON.md
+UI_REDESIGN_PROPOSAL.md
+WORKSPACE_ADDON_MIGRATION_PLAN.md
+CHANGES_SUMMARY_*.md
+INSTALL_*.md
+MIGRATION_SUMMARY_*.md
+RELEASE_NOTES_*.md
+TESTING_*.md
+docs/
 
 # Development/testing files
 SIDEBAR_TESTING.md
+test-milkdown*.html
+ui-mockup-final.html
 
 # OS generated files
 .DS_Store
